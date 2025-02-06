@@ -1,7 +1,7 @@
 Python wrapper for AM
 =====================
-A simple Python wrapper for Scott Paine's ``am`` atmospheric radiative transfer
-code.  For details on ``am`` see the official Zenodo links to the `source`_ and
+A simple Python wrapper for Scott Paine's AM atmospheric radiative transfer
+code.  For details on AM see the official Zenodo links to the `source`_ and
 `documentation`_. Further information can be found on Scott Paine's `website`_.
 This wrapper requires the ``am`` executable to be available on the host
 operating system and in the user's path.  Documentation on how to use this

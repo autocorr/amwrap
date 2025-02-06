@@ -106,13 +106,14 @@ class Climatology:
         # Technically volumetric mixing ratio has units of "mol/mol"
         # The units are in parts-per-million, normalize to unity as the "vmr"
         # parameter expects in AM.
-        self.h2o_mixing_ratio = data[:, 4] * 1e-6 * u.dimensionless_unscaled
-        self.co2_mixing_ratio = data[:, 5] * 1e-6 * u.dimensionless_unscaled
-        self.o3_mixing_ratio  = data[:, 6] * 1e-6 * u.dimensionless_unscaled
-        self.n2o_mixing_ratio = data[:, 7] * 1e-6 * u.dimensionless_unscaled
-        self.co_mixing_ratio  = data[:, 8] * 1e-6 * u.dimensionless_unscaled
-        self.ch4_mixing_ratio = data[:, 9] * 1e-6 * u.dimensionless_unscaled
-        self.o2_mixing_ratio  = data[:,10] * 1e-6 * u.dimensionless_unscaled
+        from_ppm = 1e-6 * u.dimensionless_unscaled
+        self.h2o_mixing_ratio = data[:, 4] * from_ppm
+        self.co2_mixing_ratio = data[:, 5] * from_ppm
+        self.o3_mixing_ratio  = data[:, 6] * from_ppm
+        self.n2o_mixing_ratio = data[:, 7] * from_ppm
+        self.co_mixing_ratio  = data[:, 8] * from_ppm
+        self.ch4_mixing_ratio = data[:, 9] * from_ppm
+        self.o2_mixing_ratio  = data[:,10] * from_ppm
         # TODO Integrate water vapor to PWV, useful for the tropospheric
         # relative scaling in AM calculations.
 
