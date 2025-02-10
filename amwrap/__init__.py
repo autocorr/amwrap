@@ -66,8 +66,9 @@ if CACHE_DIR.exists():
     ENV["AM_CACHE_PATH"] = CACHE_DIR
 
 MOD_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
-MASS_DRY_AIR = 28.9644
-MASS_WATER =   18.01528
+MASS_DRY_AIR = 28.9644  * u.u  # amu
+MASS_WATER =   18.01528 * u.u
+RHO_WATER =     0.9998395 * u.g / u.cm**3
 
 
 def mixing_ratio_from_relative_humidity(cls, pressure, temperature, relative_humidity):
@@ -123,6 +124,18 @@ class Climatology:
             return cls("midlatitude_summer")
         else:
             return cls("midlatitude_winter")
+
+    @property
+    def pwv(self):
+        """
+        Use the Ideal Gas Law to calculate air volume density and then use a
+        trapezoidal sum to integrate the volume density as a function of
+        altitude.
+        """
+        # c.k_B: Boltzmann's constant
+        air_density = self.pressure / (c.k_B * self.temperature)
+        column_density = np.trapz(self.h2o_mixing_ratio * air_density, x=self.altitude)
+        return (column_density * MASS_WATER / RHO_WATER).to("mm")
 
 CLIMATOLOGIES = {n: Climatology(n) for n in Climatology.names}
 
