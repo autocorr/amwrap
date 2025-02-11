@@ -17,8 +17,7 @@ Typical usage example:
 
 # TODO
 # - Add options for including clouds through "lwp_abs_Rayleigh" and
-#   "iwp_abs_Rayleigh" column types.
-# - Parse diagnostic data from the STDERR output into the DataFrame.
+#   "iwp_abs_Rayleigh" column types in layers.
 # - Perform interpolations/extrapolation on vertical profiles
 # - Have the PWV be configurable as a both a direct input in the mixing ratio as
 #   well an exponential function with a scale height.
@@ -281,10 +280,10 @@ class Model:
 
     @property
     def output_units(self):
-        return [
-                self.valid_output_descriptors[n].split()[-1]
+        return {
+                n: self.valid_output_descriptors[n].split()[-1]
                 for n in self.output_columns
-        ]
+        }
 
     @property
     def output_descriptor(self):
