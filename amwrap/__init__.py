@@ -21,6 +21,7 @@ Typical usage example:
 # - Perform interpolations/extrapolation on vertical profiles
 # - Have the PWV be configurable as a both a direct input in the mixing ratio as
 #   well an exponential function with a scale height.
+# - Add conversion between pressure and altitude (w/ Eotvos effect).
 
 import os
 import warnings
@@ -98,8 +99,8 @@ class Climatology:
         self.name = name
         climatology_path = MOD_DIR / "climatology"
         data = np.loadtxt(climatology_path / f"{name}.dat")
-        gas_minor = np.loadtxt(climatology_path / f"{gas_minor}.dat")
-        gas_trace = np.loadtxt(climatology_path / f"{gas_trace}.dat")
+        gas_minor = np.loadtxt(climatology_path / "gas_minor.dat")
+        gas_trace = np.loadtxt(climatology_path / "gas_trace.dat")
         # The slices will create views but multiplying by units will create copies.
         # Using the "<<" syntax to add units "in place" also creates copies in
         # this case, so just use the "*" for better readibility.
@@ -189,6 +190,7 @@ class Model:
     valid_species = [
             "ch4", "12ch4", "13ch4", "12ch3d",
             "ch3cn", "12ch3_12c14n",
+            "ch3oh", "12ch3_16oh",
             "co", "12c_16o", "13c_16o", "12c_18o", "12c_17o", "13c_18o", "13c_17o",
             "co2", "12c_16o2", "13c_16o2", "16o_12c_18o", "16o_12c_17o", "16o_13c_18o", "16o_13c_17o", "12c_18o2",
             "clo", "35cl_16o", "37cl_16o",
