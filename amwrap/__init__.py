@@ -73,14 +73,12 @@ RHO_WATER =     0.9998395 * u.g / u.cm**3
 
 
 def mixing_ratio_from_relative_humidity(pressure, temperature, relative_humidity):
-    # pylint: disable=all
-    # MetPy is currently not a dependency in `requirements.txt`, so will fail in CI.
     from metpy.units.pint import Quantity
     from metpy.calc import mixing_ratio_from_relative_humidity
     p  = pressure.to("hPa").value * Quantity("hPa")
     t  = temperature.to("deg_C", equivalencies=u.temperature()).value * Quantity("degC")
     rh = relative_humidity.value * Quantity("dimensionless")
-    mr = relative_humdity_from_mixing_ratio(p, t, rh)
+    mr = mixing_ratio_from_relative_humidity(p, t, rh)
     # Returned value is mass mixing ratio, convert to volumetric mixing ratio using masses
     return mr.m * 1e6 * MASS_AIR / MASS_WATER * u.dimensionless_unscaled
 
