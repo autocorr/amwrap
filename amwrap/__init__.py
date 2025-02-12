@@ -73,6 +73,8 @@ RHO_WATER =     0.9998395 * u.g / u.cm**3
 
 
 def mixing_ratio_from_relative_humidity(pressure, temperature, relative_humidity):
+    # pylint: disable=W0212
+    # MetPy is currently not a dependency in `requirements.txt`, so will fail in CI.
     from metpy.units.pint import Quantity
     from metpy.calc import mixing_ratio_from_relative_humidity
     p  = pressure.to("hPa").value * Quantity("hPa")
