@@ -26,6 +26,7 @@ import os
 import warnings
 import subprocess
 from io import BytesIO
+from typing import Dict
 from pathlib import Path
 from datetime import datetime
 from packaging import version
@@ -95,7 +96,10 @@ class Climatology:
         if name not in self.names:
             raise ValueError(f"Invalid name: {name}")
         self.name = name
-        data = np.loadtxt(MOD_DIR / "climatology" / f"{name}.dat")
+        climatology_path = MOD_DIR / "climatology"
+        data = np.loadtxt(climatology_path / f"{name}.dat")
+        gas_minor = np.loadtxt(climatology_path / f"{gas_minor}.dat")
+        gas_trace = np.loadtxt(climatology_path / f"{gas_trace}.dat")
         # The slices will create views but multiplying by units will create copies.
         # Using the "<<" syntax to add units "in place" also creates copies in
         # this case, so just use the "*" for better readibility.
@@ -107,15 +111,34 @@ class Climatology:
         # The units are in parts-per-million, normalize to unity as the "vmr"
         # parameter expects in AM.
         from_ppm = 1e-6 * u.dimensionless_unscaled
-        self.h2o_mixing_ratio = data[:, 4] * from_ppm
-        self.co2_mixing_ratio = data[:, 5] * from_ppm
-        self.o3_mixing_ratio  = data[:, 6] * from_ppm
-        self.n2o_mixing_ratio = data[:, 7] * from_ppm
-        self.co_mixing_ratio  = data[:, 8] * from_ppm
-        self.ch4_mixing_ratio = data[:, 9] * from_ppm
-        self.o2_mixing_ratio  = data[:,10] * from_ppm
-        # TODO Integrate water vapor to PWV, useful for the tropospheric
-        # relative scaling in AM calculations.
+        self.mixing_ratio = {
+                # Major species
+                "h2o":   data[:, 4] * from_ppm,
+                "co2":   data[:, 5] * from_ppm,
+                "o3":    data[:, 6] * from_ppm,
+                "n2o":   data[:, 7] * from_ppm,
+                "co":    data[:, 8] * from_ppm,
+                "ch4":   data[:, 9] * from_ppm,
+                "o2":    data[:,10] * from_ppm,
+                # Minor species
+                "no":    gas_minor[:, 0] * from_ppm,
+                "so2":   gas_minor[:, 1] * from_ppm,
+                "no2":   gas_minor[:, 2] * from_ppm,
+                "nh3":   gas_minor[:, 3] * from_ppm,
+                "hno3":  gas_minor[:, 4] * from_ppm,
+                "oh":    gas_minor[:, 5] * from_ppm,
+                "hf":    gas_minor[:, 6] * from_ppm,
+                "hcl":   gas_minor[:, 7] * from_ppm,
+                "hbr":   gas_minor[:, 8] * from_ppm,
+                "clo":   gas_minor[:,10] * from_ppm,
+                "ocs":   gas_minor[:,11] * from_ppm,
+                "h2co":  gas_minor[:,12] * from_ppm,
+                "hocl":  gas_minor[:,13] * from_ppm,
+                "hcn":   gas_minor[:,15] * from_ppm,
+                "h2o2":  gas_minor[:,17] * from_ppm,
+                # Trace species
+                "h2s":   gas_trace[:, 2] * from_ppm,
+        }
 
     @classmethod
     def midlat_from_datetime(cls, dt):
@@ -163,19 +186,55 @@ class Model:
             "delay": "L mm",
             "absorption coefficient": "k auto",
     }
+    valid_species = [
+            "ch4", "12ch4", "13ch4", "12ch3d",
+            "ch3cn", "12ch3_12c14n",
+            "co", "12c_16o", "13c_16o", "12c_18o", "12c_17o", "13c_18o", "13c_17o",
+            "co2", "12c_16o2", "13c_16o2", "16o_12c_18o", "16o_12c_17o", "16o_13c_18o", "16o_13c_17o", "12c_18o2",
+            "clo", "35cl_16o", "37cl_16o",
+            "hbr", "h_79br", "h_81br",
+            "hcn", "h_12c_14n", "h_13c_14n", "h_12c_15n",
+            "h2co", "h2_12c_16o", "h2_13c_16o", "h2_12c_18o",
+            "hcl", "h_35cl", "h_37cl",
+            "hf", "h_19f",
+            "hno3", "h_14n_16o3",
+            "h2o", "h2o_lines", "h2_16o", "h2_18o", "h2_17o", "hd_16o", "hd_18o", "hd_17o",
+            "h2o2", "h2_16o2",
+            "ho2", "h_16o2",
+            "hocl", "h_16o_35cl", "h_16o_37cl",
+            "h2s", "h2_32s", "h2_34s", "h2_33s",
+            "nh3", "14nh3", "15nh3",
+            "n2o", "14n2_16o", "14n_15n_16o", "15n_14n_16o", "14n2_18o", "14n2_17o",
+            "no", "14n_16o",
+            "no2", "14n_16o2",
+            "o", "16o",
+            "o2", "o2_coupled", "16o2_coupled", "16o2", "16o_18o", "16o_17o",
+            "o2_uncoupled", "16o2_uncoupled", "16o_18o_uncoupled", "16o_17o_uncoupled",
+            "o3", "16o3", "16o2_18o", "16o_18o_16o", "16o2_17o", "16o_17o_16o",
+            "ocs", "16o_12c_32s", "16o_12c_34s", "16o_13c_32s", "16o_12c_33s", "18o_12c_32s",
+            "oh", "16oh", "18oh", "16od",
+            "so2", "32s_16o2", "34s_16o2",
+            "h2o_continuum",
+            "h2o_air_continuum",
+            "h2o_self_continuum",
+            "n2n2",
+            "n2air",
+            "o2o2",
+            "o2air",
+            "lwp_abs_Rayleigh",
+            "iwp_abs_Rayleigh",
+    ]
 
     @u.quantity_input
     def __init__(self,
                 pressure: u.Quantity["pressure"],
                 temperature: u.Quantity["temperature"],
-                h2o_mixing_ratio: u.Quantity["dimensionless"],
+                mixing_ratio: Dict[str, u.Quantity["dimensionless"]|None]|None=None,
                 zenith_angle: u.Quantity["angle"]=0*u.deg,
                 freq_min: u.Quantity["frequency"]=18*u.GHz,
                 freq_max: u.Quantity["frequency"]=26.5*u.GHz,
                 freq_step: u.Quantity["frequency"]=10*u.MHz,
                 troposphere_h2o_scaling=1.0,
-                do_ozone=True,
-                o3_mixing_ratio: u.Quantity["dimensionless"]|None=None,
                 output_columns=(
                     "frequency",
                     "brightness temperature",
@@ -195,8 +254,10 @@ class Model:
             Atmospheric pressure at the base of the layer.
           temperature:
             Atmospheric temperature at the base of the layer.
-          h2o_mixing_ratio:
-            Volumetric mixing ratio of water.
+          mixing_ratio:
+            Dictionary of volumetric mixing ratios indexed by a string for
+            a specie name recognized by AM. If a specie is set to ``None``,
+            then values are interpolated from the US Standard climatology.
           zenith_angle:
             Zenith angle of ray; 0 deg is towards zenith and 90 deg is towards
             the horizon.
@@ -208,10 +269,6 @@ class Model:
             Frequency step or "channel" size to compute output values over.
           troposphere_h2o_scaling:
             Scale the tropospheric water mixing ratio by this factor.
-          do_ozone:
-            Whether to calculate ozone lines.
-          o3_mixing_ratio:
-            Volumetric mixing ratio of ozone.
           output_columns:
             Values to calculate as part of the returned output. See available
             output columns in the `valid_output_descriptors` class attribute.
@@ -223,13 +280,10 @@ class Model:
             Numerical tolerance for the self-broadening approximation described
             in S2.3.1 of the AM manual.
         """
-        # FIXME AM wants layers listed in low-to-high pressure order, mark for
-        # ascending or descending and then feed to iterator in config generation.
-        assert pressure.shape == temperature.shape == h2o_mixing_ratio.shape
-        assert pressure.shape[0] > 1
+        assert pressure.shape == temperature.shape
+        assert pressure.shape[0] > 0
         self.pressure = pressure
         self.temperature = temperature
-        self.h2o_mixing_ratio = h2o_mixing_ratio
         assert 0 * u.deg <= zenith_angle <= 90 * u.deg
         self.zenith_angle = zenith_angle
         # Output frequency range.
@@ -241,21 +295,23 @@ class Model:
         # Tropospheric water vapor scaling
         assert troposphere_h2o_scaling > 0
         self.troposphere_h2o_scaling = troposphere_h2o_scaling
-        # If ozone is requested but not supplied, use the US standard
-        # atmosphere, interpolating to the same pressure axis if needed.
-        self.do_ozone = do_ozone
-        if do_ozone and o3_mixing_ratio is None:
-            climatology = CLIMATOLOGIES["us_standard"]
-            o3_mixing_ratio = climatology.o3_mixing_ratio
-            if not np.allclose(pressure, climatology.pressure):
-                # Dissimilar axes, interpolate.
-                self.o3_mixing_ratio = np.interp(pressure, climatology.pressure, o3_mixing_ratio)
+        # Validate that the provided mixing ratios are available in AM. If `None`
+        # is provided, then check that the specie is avialable in the standard
+        # climatology and interpolate onto the pressure grid. Otherwise simply
+        # check that the shapes match.
+        for specie, mr in mixing_ratio.items():
+            if specie not in self.valid_species:
+                raise ValueError(f"Column type unavailable in AM: {specie}")
+            if mr is None:
+                cl = CLIMATOLOGIES["us_standard"]
+                if specie not in CLIMATOLOGIES["us_standard"].mixing_ratio:
+                    raise ValueError(f"Default column type unavailable in climatology data: {specie}")
+                # Not okay to mutate a dictionary while looping?
+                mixing_ratio[specie] = np.interp(pressure, cl.pressure, cl.mixing_ratio[specie])
             else:
-                # Same pressure axis, use directly.
-                self.o3_mixing_ratio = o3_mixing_ratio
-        else:
-            assert h2o_mixing_ratio.shape == o3_mixing_ratio.shape
-            self.o3_mixing_ratio = o3_mixing_ratio
+                assert np.all(0 <= mr) and np.all(mr <= 1)
+                assert mr.shape == pressure.shape
+        self.mixing_ratio = mixing_ratio
         # AM output column validation.
         for out in output_columns:
             if out not in self.valid_output_descriptors:
@@ -270,11 +326,15 @@ class Model:
     @classmethod
     def from_climatology(cls, name, **kwargs):
         climatology = CLIMATOLOGIES[name]
+        mixing_ratio = {
+                k: v
+                for k, v in climatology.mixing_ratio.items()
+                if k in ("h2o", "o3")
+        }
         return cls(
                 climatology.pressure,
                 climatology.temperature,
-                climatology.h2o_mixing_ratio,
-                o3_mixing_ratio=climatology.o3_mixing_ratio,
+                mixing_ratio,
                 **kwargs,
         )
 
@@ -345,10 +405,9 @@ class Model:
         # column o3 vmr 1.77e-06
         ###
         layers = []
-        for p, t, w_mr in zip(
+        for p, t in zip(
                 self.pressure.to("mbar").value,
                 self.temperature.to("K").value,
-                self.h2o_mixing_ratio.to("").value,
             ):
             if p < 0.01:  # mbar
                 layer_type = "thermosphere"
@@ -363,14 +422,13 @@ class Model:
                     f"Pbase {p} mbar",
                     f"Tbase {t} K",
                     "column dry_air vmr",
-                    f"column h2o vmr {w_mr:1.4e}",
             ]
             if layer_type == "mesosphere":
                 layer.append("lineshape Voigt-Kielkopf")
             layers.append(layer)
-        if self.do_ozone:
-            for item, o_mr in zip(layers, self.o3_mixing_ratio.to("").value):
-                item.append(f"column o3 vmr {o_mr:1.4e}")
+        for specie, mr in self.mixing_ratio.items():
+            for v, layer in zip(mr.to("").value, layers):
+                layer.append(f"column {specie} vmr {v:1e4e}")
         # AM requires that pressure levels be specified from low- to
         # high-pressure. The inputs are typically ordered by increasing
         # altitude, so need to be reversed.
@@ -417,9 +475,6 @@ class Model:
           `attrs` attribute. Metadata includes output from `STDERR`, whether
           warnings were raised, and the units for each output column.
         """
-        # NOTE Sean found that using `subprocess` was slower than writing and
-        # reading files. Maybe an encoding thing? Try with `subprocess` first,
-        # and if slow then move to file IO on /dev/shm.
         executable_name = "am" if parallel else "am-serial"
         if parallel and not CALLABLE:
             raise RuntimeError("`am` is not callable.")
