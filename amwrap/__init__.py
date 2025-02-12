@@ -72,7 +72,7 @@ MASS_WATER =   18.01528 * u.u
 RHO_WATER =     0.9998395 * u.g / u.cm**3
 
 
-def mixing_ratio_from_relative_humidity(cls, pressure, temperature, relative_humidity):
+def mixing_ratio_from_relative_humidity(pressure, temperature, relative_humidity):
     from metpy.units.pint import Quantity
     from metpy.calc import mixing_ratio_from_relative_humidity
     p  = pressure.to("hPa").value * Quantity("hPa")
@@ -150,6 +150,10 @@ class Climatology:
 
     @property
     def pwv(self):
+        column_density = self.column_density("h2o")
+        return (column_density * MASS_WATER / RHO_WATER).to("mm")
+
+    def column_density(self, specie):
         """
         Use the Ideal Gas Law to calculate air volume density and then use a
         trapezoidal sum to integrate the volume density as a function of
@@ -157,8 +161,9 @@ class Climatology:
         """
         # c.k_B: Boltzmann's constant
         air_density = self.pressure / (c.k_B * self.temperature)
-        column_density = np.trapz(self.h2o_mixing_ratio * air_density, x=self.altitude)
-        return (column_density * MASS_WATER / RHO_WATER).to("mm")
+        mixing_ratio = self.mixing_ratio[specie]
+        column_density = np.trapz(mixing_ratio * air_density, x=self.altitude)
+        return column_density.to("cm-2")
 
 CLIMATOLOGIES = {n: Climatology(n) for n in Climatology.names}
 
@@ -291,6 +296,7 @@ class Model:
         # Output frequency range.
         assert freq_max > freq_min
         assert freq_step > 0 * u.Hz
+        assert (freq_max - freq_min) > freq_step
         self.freq_min  = freq_min
         self.freq_max  = freq_max
         self.freq_step = freq_step
@@ -430,7 +436,7 @@ class Model:
             layers.append(layer)
         for specie, mr in self.mixing_ratio.items():
             for v, layer in zip(mr.to("").value, layers):
-                layer.append(f"column {specie} vmr {v:1e4e}")
+                layer.append(f"column {specie} vmr {v:1.4e}")
         # AM requires that pressure levels be specified from low- to
         # high-pressure. The inputs are typically ordered by increasing
         # altitude, so need to be reversed.
@@ -460,7 +466,7 @@ class Model:
         df.attrs["units"] = self.output_units
         df.attrs["stderr"] = result.stderr.decode()
         df.attrs["warnings?"] = warnings_returned
-        df.attrs["ozone?"] = self.do_ozone
+        df.attrs["species"] = list(self.mixing_ratio.keys())
         return df
 
     def run(self, parallel=False):
