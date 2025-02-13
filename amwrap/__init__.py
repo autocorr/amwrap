@@ -307,6 +307,8 @@ class Model:
         # is provided, then check that the specie is avialable in the standard
         # climatology and interpolate onto the pressure grid. Otherwise simply
         # check that the shapes match.
+        if mixing_ratio is None:
+            mixing_ratio = {}
         for specie, mr in mixing_ratio.items():
             if specie not in self.valid_species:
                 raise ValueError(f"Column type unavailable in AM: {specie}")
