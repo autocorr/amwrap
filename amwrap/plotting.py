@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
+
 from matplotlib import pyplot as plt
 from matplotlib.ticker import AutoMinorLocator
 

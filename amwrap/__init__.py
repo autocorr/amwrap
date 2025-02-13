@@ -80,7 +80,7 @@ def mixing_ratio_from_relative_humidity(pressure, temperature, relative_humidity
     rh = relative_humidity.value * Quantity("dimensionless")
     mr = mixing_ratio_from_relative_humidity(p, t, rh)
     # Returned value is mass mixing ratio, convert to volumetric mixing ratio using masses
-    return mr.m * 1e6 * MASS_AIR / MASS_WATER * u.dimensionless_unscaled
+    return mr.m * 1e6 * MASS_DRY_AIR / MASS_WATER * u.dimensionless_unscaled
 
 
 class Climatology:
@@ -234,13 +234,13 @@ class Model:
 
     @u.quantity_input
     def __init__(self,
-                pressure: u.Quantity["pressure"],
-                temperature: u.Quantity["temperature"],
-                mixing_ratio: Dict[str, u.Quantity["dimensionless"]|None]|None=None,
-                zenith_angle: u.Quantity["angle"]=0*u.deg,
-                freq_min: u.Quantity["frequency"]=18*u.GHz,
-                freq_max: u.Quantity["frequency"]=26.5*u.GHz,
-                freq_step: u.Quantity["frequency"]=10*u.MHz,
+                pressure: u.Quantity["pressure"],  # noqa: F821
+                temperature: u.Quantity["temperature"],  # noqa: F821
+                mixing_ratio: Dict[str, u.Quantity["dimensionless"]|None]|None=None,  # noqa: F821
+                zenith_angle: u.Quantity["angle"]=0*u.deg,  # noqa: F821
+                freq_min: u.Quantity["frequency"]=18*u.GHz,  # noqa: F821
+                freq_max: u.Quantity["frequency"]=26.5*u.GHz,  # noqa: F821
+                freq_step: u.Quantity["frequency"]=10*u.MHz,  # noqa: F821
                 troposphere_h2o_scaling=1.0,
                 output_columns=(
                     "frequency",
