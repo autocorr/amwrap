@@ -1,1 +1,6 @@
+astropy
+matplotlib
+metpy
+numpy
+pandas
 sphinx-rtd-theme
