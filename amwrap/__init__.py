@@ -165,6 +165,14 @@ class Climatology:
         column_density = np.trapz(mixing_ratio * air_density, x=self.altitude)
         return column_density.to("cm-2")
 
+    def dobson_unit(self, specie):
+        """
+        The Dobson unit (DU) is defined as the thickness (in units of 10 μm) of
+        that layer of pure gas which would be formed by the total column amount
+        at standard conditions for temperature and pressure (STP).
+        """
+        return self.column_density(specie).to("m-2").value / 2.69e20
+
 CLIMATOLOGIES = {n: Climatology(n) for n in Climatology.names}
 
 
