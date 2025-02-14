@@ -37,6 +37,9 @@ class TestClimatology:
     def test_pwv(self, f_cl):
         assert np.isclose(f_cl.pwv.value, 14.377778)
 
+    def test_dobson_unit(self, f_cl):
+        assert np.isclose(f_cl.dobson_unit("o3"), 345.01522)
+
 
 class TestModel:
     def test_from_climatology(self):
