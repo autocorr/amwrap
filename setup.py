@@ -17,13 +17,14 @@ def build_am():
     bin_dir  = root_dir / "amwrap" / "bin"
     os.chdir(src_dir)
     # compile serial version
-    subprocess.check_call(["make", "-j", "serial"])
+    subprocess.check_call(["make", "serial", "-j"])
+    subprocess.check_call(["pwd"])
     subprocess.check_call(["ls", "-lh"])
     (src_dir / "am").rename(bin_dir / "am-serial")
     subprocess.check_call(["make", "clean"])
     print("-- Compiled serial version of AM")
     # compile standard/multithreaded version
-    subprocess.check_call(["make", "-j", "am"])
+    subprocess.check_call(["make", "am", "-j"])
     (src_dir / "am").rename(bin_dir / "am")
     subprocess.check_call(["make", "clean"])
     print("-- Compiled parallel version of AM")
