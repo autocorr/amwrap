@@ -1,0 +1,160 @@
+am version 14.0
+build date Sep 29 2024 20:31:17
+64-bit multi-threaded (OpenMP version 201511)
+
+The following is a summary list of data sources for am.  For complete
+references, see Paine, S. 2024, SMA Technical Memo No. 152 rev. 14.0
+(https://doi.org/10.5281/zenodo.640645).
+
+
+Spectral line data are derived from the HITRAN2020 database and other
+sources noted below.  The principal reference for HITRAN2020 is
+
+ I.E. Gordon et al. 2022, "The HITRAN2020 molecular spectroscopic
+  database."  Journal of Quantitative Spectroscopy and Radiative
+  Transfer 277:107949 (See also http://www.hitran.org/)
+
+Partition functions for most species are from the TIPS_2021 database:
+
+ R. R. Gamache, et al. 2021, "Total Internal Partition Sums for the
+  HITRAN2020 database.", Journal of Quantitative Spectroscopy and
+  Radiative Transfer 271:107713.
+
+Water vapor line data are from the aer_v_3.8.1 database, copyright
+(c) Atmospheric and Environmental Research, Inc. (AER), 2020, and
+archived at https://zenodo.org/record/512012.  For further information,
+see http://rtweb.aer.com.
+
+N2O line data from HITRAN2020 are augmented with data from the JPL
+spectral line catalog.  See:
+
+ H.M. Pickett et al. 1998, "Submillimeter, millimeter and microwave
+  spectral line catalog."  Journal of Quantitiative Spectroscopy and
+  Radiative Transfer 60:883.  (See also http://spec.jpl.nasa.gov)
+
+16O2 line mixing data are derived from
+
+ D. S. Makarov, M. Yu. Tretyakov, and P. W Rosenkranz 2011, "60-GHz
+  oxygen band: Precise experimental profiles and extended absorption
+  modeling in a wide temperature range."  JQSRT 112:1420.
+
+In addition, 16O2 line data from
+
+ M. Yu. Tretyakov, M. A. Koshelev, V. V. Dorovskikh, D. S. Makarov,
+  and P. W. Rosenkranz 2005, "60-GHz oxygen band: precise broadening
+  and central frequencies of fine-structure lines, absolute absorption
+  profile at atmospheric pressure, and revision of mixing coefficients."
+  J. Mol. Spec. 231:1.
+
+have been merged into the HITRAN line data.  Nonresonant O2 absorption
+lines from the HITRAN catalog have been replaced with a single effective
+16O2 line; the air broadening parameter for this line is from
+
+ H. J. Liebe 1985, "An updated model for millimeter wave propagation in
+  moist air."  Radio Science 20:1069.
+
+The strength of the nonresonant O2 absorption was adjusted to fit the
+microwave data in Table 2 of
+
+ L. Danese and R. B. Partridge 1989, "Atmospheric emission models:
+  confrontation between observational data and predictions in the
+  2.5-300 GHz frequency range."  Ap. J. 342:604.
+
+The millimeter-wave coupled+nonresonant O2 absorption was adjusted to
+fit the laboratory measurements in
+
+ A. I. Meshkov and F. C. DeLucia 2007, "Laboratory measurements of dry
+  air atmospheric absorption with a millimeter wave cavity ringdown
+  spectrometer."  JQSRT 108:256.
+
+by applying a slight bias to the first-order mixing coefficients in
+Makarov et al., referenced above.  See the source file o2.c for
+details.
+
+Finally, the broadening coefficients of several O2 lines have been
+adjusted to follow the aer_v_3.8.1 database referred to above.  See the
+source file o2.c for details.
+
+
+Water vapor continuum absorption data are from the MT_CKD (v4.2) model,
+maintained by the Radiative Transfer Working Group at Atmospheric and
+Environmental Research, Inc. (AER). See http://rtweb.aer.com.  MT_CKD
+is archived at https://github.com/AER-RC/MT_CKD.  See:
+
+ E.J. Mlawer, V.H. Payne, J.-L. Moncet, J.S. Delamere, M.J. Alvarado, and
+  D.C. Tobin 2012, "Development and recent evaluation of the MT_CKD model
+  of continuum absorption."  Phil. Trans. R. Soc A 370:2520.
+  (doi:10.1098/rsta.2011.0295).
+
+ E.J. Mlawer, K.E.Cady-Periera, J. Mascio, and I.E. Gordon 2023, "The
+  inclusion of the MT_CKD water vapor continuum model in the HITRAN
+  molecular spectroscopic database."  JQSRT 306:108645.
+  (https://doi.org/10.1016/j.jqsrt.2023.108645)
+
+and references therein.
+
+
+Collision-induced absorption
+
+ A. Borysow and L. Frommhold 1986.  "Collision-induced rototranslational
+  absorption spectra of N2-N2 pairs for temperatures from 50 to 300 K."
+  Ap. J. 311:1043. (erratum in Ap. J. 320:437)
+
+(The strength and temperature dependence of the quadrupolar induction term
+have been modified in am - see the source code for details.)
+
+ J. Boissoles, C. Boulet, R.H. Tipping, A. Brown, Q. Ma 2003  "Theoretical
+  calculation of the translation-rotation collision-induced absorption in
+  N2-N2, O2-O2, and N2-O2 pairs."  JQSRT 82:505.
+
+For N2-N2, am has been validated from 93 K to 343 K with the experimental
+data in:
+
+ N.W.B. Stone, L.A.A. Read, A. Anderson, I.R. Dagg, and W. Smith 1984,
+  "Temperature dependent collision-induced absorption in nitrogen."
+  Can. J. Phys. 62:338.
+
+ I.R. Dagg, A. Anderson, S. Yan, W. Smith, and L.A.A. Read 1985, "Collision-
+  induced absorption in nitrogen at low temperatures." Can. J. Phys.
+  63:625.
+
+ P. Dore and A. Filabozzi 1987, "On the nitrogen-induced far-infrared
+  absorption spectra." Can. J. Phys. 65:90.
+
+For O2-O2, am has been validated at 300 K only, using the data of
+
+ D.R. Bosomworth and H.P. Gush 1965, "Collision-induced absorption of
+  compressed gases in the far infrared, Part II." Can. J. Phys. 43:751
+
+
+Liquid water and ice properties
+
+ D.D. Turner, S. Kneifel, and M.P. Cadeddu 2016, "An Improved Liquid
+  Water Absorption Model at Microwave Frequencies for Supercooled Liquid
+  Water Clouds."   J. Atmos. Oceanic Technol. 33:33.
+
+ W.J. Ellison 2007, "Permittivity of Pure Water, at Standard Atmospheric
+  Pressure, over the Frequency Range 0-25 THz and the Temperature Range
+  0-100 C."  J. Phys. Chem. Ref. Data 36:1.
+
+ G.S. Kell 1975, "Density, Thermal Expansivity, and Compressibility of
+  Liquid Water from 0 to 150 C: Correlations and Tables for Atmospheric
+  Pressure and Saturation Reviewed and Expressed on 1968 Temperature
+  Scale."  Journal of Chemical and Engineering Data 20:97.
+
+ D.E. Hare and C.M. Sorensen 1987, "The density of supercooled water.
+  II. Bulk samples cooled to the homogeneous nucleation limit." J. Chem.
+  Phys. 87:4840.
+
+ C. Maetzler in C. Maetzler, ed. 2006 "Thermal Microwave Radiation:
+  Applications for Remote Sensing." Section 5.3, Institution of
+  Engineering and Technology, London.
+
+ S.G. Warren and R.E. Brandt 2008, "Optical constants of ice from the
+  ultraviolet to the microwave: A revised compilation." J. Geophys.
+  Res. 113:D14220
+
+ K. Roettger, A. Endriss, J. Ihringer, S. Doyle, and W.F. Kuhs 2012,
+  "Lattice Constants and Thermal Expansion of H2O and D2O Ice Ih
+  Between 10 and 265K.  Addendum."  Acta Cryst. B68:91.
+

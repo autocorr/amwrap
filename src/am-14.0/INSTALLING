@@ -1,0 +1,379 @@
+Installing am
+=============
+S. Paine rev. 2024 September 27
+
+Contents
+========
+1. Installing on Windows
+2. Installing on GNU/Linux, Unix, and macOS
+3. Compile-time options
+4. Environment Variables
+   4.1 Program-specific environment variables
+   4.2 OpenMP environment variables
+
+
+1. Installing on Windows
+========================
+A precompiled version of am is available as a Windows installer file.
+The executable has been compiled with OpenMP support using Microsoft
+Visual Studio Community 2022 (version 17.11.4), and packaged with
+Caphyon Advanced Installer (version 22.0).  The installer will install
+the required OpenMP and C runtime redistributable libraries from
+Microsoft if they are not already present on the system.
+
+The installer will create a directory for the am cache files, and
+create a new user environment variable AM_CACHE_PATH pointing to the
+default cache directory, which will be
+
+  c:\Users\<username>\AppData\Local\am
+
+The executable file, together with the manual, source code, and
+example files from the am cookbook, will be installed by default in
+the (64-bit) Program Files directory at
+
+  c:\Program Files\am-14.0
+
+The installation directory path will be appended to the installing
+user's PATH environment variable.
+
+Uninstalling will undo the above, with two exceptions.  First, if the
+cache directory is not empty, it will not be removed.  Second, if
+multiple users install the program on the same system, and it is
+subsequently uninstalled, the cache directory (if empty) will be
+removed and environment variables will be modified only for the user
+doing the uninstall.  Other users would then need to remove these
+manually if desired.
+
+To install:
+
+  1. Obtain the installer file, am-14.0-x64.msi.  The latest version
+     of the installer file, and links to earlier versions, can be
+     found in the Zenodo repository at:
+
+     https://doi.org/10.5281/zenodo.8161261
+
+  2. Unzip the archive file , then run the installer file by
+     double-clicking it, or by running the command
+
+     msiexec /i <path-to-installer-file>
+
+
+To remove:
+
+  1. Go to Control Panel->Uninstall a program, or Settings->Apps &
+     Features.
+
+  2. Select "am-14.0" from the list of installed programs and choose
+     "Uninstall".
+
+2. Installing on GNU/Linux, Unix, and macOS
+===========================================
+On these systems, am is installed by compiling from source and copying
+the resulting executable to the desired directory.  The cache
+directory and user environment are set up manually.
+
+The procedure below assumes that the compiler is gcc, which is
+available on most GNU/Linux systems and many other Unix-like systems.
+The Nvidia (PGI) nvc and Intel icc compilers are also supported.
+More information on using these compilers can be found in the Makefile
+help message, which can be read using the command "make" or "make
+help" in the am source directory.
+
+Compiling on macOS requires a few extra steps.  The minimum is to
+download and install the Apple Xcode Developer Tools.  To provide
+basic gcc compatibility, Xcode installs a gcc command in /usr/bin, but
+this is actually a just a front-end to the clang compiler used by
+Xcode.  The current version (Xcode 16.0) does not provide OpenMP
+support, so it can only compile the serial version of am.  This works,
+but is not recommended.
+
+Instead, the recommended way to build am on macOS is to install gcc
+using a package manager such as Brew, Fink, or MacPorts.  These are an
+excellent way to install and maintain up-to-date gcc compilers and
+many other tools for technical computing.  In particular, building am
+with MacPorts has been thoroughly tested.  MacPorts requires Xcode as
+a prerequisite, and the MacPorts web site (www.macports.org) has
+helpful instructions for installing Xcode.
+
+The following installation steps are for a typical GNU/Linux system
+and gcc compiler; the procedure on other Unix-like systems and macOS
+will be similar:
+
+  1. Check the version of gcc installed on the system with the command:
+
+     gcc --version
+
+     If the version is 4.2 or higher, then OpenMP is supported.
+
+  2. Obtain a copy of the archive file am-14.0.tgz.  The latest
+     version of the archive, and links to earlier versions, can be
+     found in the Zenodo repository at
+
+     https://doi.org/10.5281/zenodo.8161261
+
+  3. In a suitable directory, unpack the archive with the command:
+
+     tar -xzf am-14.0.tgz
+
+     This creates a directory am-14.0 containing the source files.
+
+  4. Change to the am-14.0/src directory, and run
+
+     make am
+
+     to build the OpenMP version (recommended), or
+
+     make serial
+
+     to build a single-threaded version.
+
+  5. Copy the resulting executable file am to a suitable directory in
+     the user's path.  This could be, for example, a private bin
+     directory ~/bin for a single user, or /usr/local/bin for all
+     users.  Giving the command
+
+     make install
+
+     as root, or
+
+     sudo make install
+
+     will copy am to /usr/local/bin, and set the appropriate file
+     attributes.  (On macOS, /usr/local/bin is listed in /etc/paths,
+     which is read by the path_helper utility that constructs the
+     shell PATH environment variable.  However, on a fresh macOS
+     installation, this directory may not yet exist, so the install
+     target will create it if needed.)
+
+  6. Create a directory for the am cache files, and set an environment
+     variable so that am can find it.  The cache directory can be
+     private, or it can be shared by multiple users – concurrent
+     instances of am can safely share the cache.  For good
+     performance, it is important that the cache directory reside on a
+     locally-connected disk, rather than on a disk mounted across a
+     network.  A typical user-private setup would be to create a
+     directory .am in the user's home directory, and add the line
+
+     export AM_CACHE_PATH=~/.am
+
+     to the user's .bashrc (typical on GNU/Linux) or .bash_profile or
+     .zprofile (typical on macOS, where every terminal session runs a
+     login shell).  C shell or tcsh users would add the line
+
+     setenv AM_CACHE_PATH ~/.am
+
+     to their .cshrc file.
+
+3. Compile-time options
+=======================
+The most important factors for obtaining good performance are to set
+up the disk cache as described above, and to compile with OpenMP on
+multicore or multi-cpu machines.  There are a few macros, listed
+below, which can be set at compile time to override the default values
+of certain parameters.  With gcc and many other compilers, this is
+done by passing an argument of the form -Dmacro=value to the compiler.
+The am Makefile help message shows how to accomplish this using the
+EXTRA_CFLAGS variable on the make command line.  In most cases,
+overriding the default parameters won’t be necessary.
+
+L1_CACHE_BYTES
+  Size of the L1 data cache per core in bytes.  The default value is
+  0x8000 (32 kB).  This controls cache blocking of absorption
+  coefficient computations, and sets the point at which FFT and FHT
+  computations switch over from recursive to iterative.  Setting this
+  parameter larger than the actual L1 cache size will hurt
+  performance, whereas setting it somewhat smaller won't matter much.
+
+L1_CACHE_WAYS
+  Associativity of the L1 data cache.  The default value is 8.
+  Together with L1_CACHE_BYTES, this controls cache blocking of
+  absorption coefficient computations.
+
+The default L1 cache settings are appropriate for all modern Intel and
+AMD processors.  These settings will also give within 5 percent of
+peak performance on Apple M1 despite the larger L1 cache on these
+processors, which is 128 kB for performance cores and 64 kB for
+efficiency cores.  In contrast, on older AMD Opteron processors with
+the “Bulldozer” microarchitecture that have 16 kB 4-way L1 data
+caches, a significant performance improvement is obtained by compiling
+am with appropriate non-default L1 cache parameters.  This is easily
+done by appropriately defining the EXTRA_CFLAGS macro on the make
+command line as follows:
+
+  $ make gcc-omp 'EXTRA_CFLAGS = -DL1_CACHE_BYTES=0x4000 -DL1_CACHE_WAYS=4'
+
+Typing make help, or simply make with no arguments will give a few
+more examples.  Note that spaces are only allowed around the first
+'=', as shown here.
+
+L2_CACHE_BYTES
+  Size of the L2 data cache per core in bytes.  The default is
+  0x100000 (1 MB).  This sets the size of certain benchmarks run with
+  am -b, and has no effect on performance.
+
+LINESUM_MIN_THD_BLOCKSIZE
+  This is the smallest number of frequency grid points which will be
+  given to a thread doing a block of a line-by-line computation.  The
+  default value is 8, which is the number of 8-byte double-precision
+  numbers which will fit into the 64-byte cache lines found on many
+  machines.  To avoid false sharing, it is recommended not to make
+  this value any smaller.  False sharing occurs when two or more
+  threads, running on different CPUs, access distinct, unshared data
+  that reside in the same cache line.  Each time one thread writes
+  data to this cache line, it invalidates all other copies of the same
+  cache line, including the unshared data, held by other CPUs.
+
+FFT_UNIT_STRIDE
+FHT_UNIT_STRIDE
+  These select whether iterative FFT's and FHT's are done with
+  unit-stride memory access (at the expense of extra trig
+  computations), or with non-unit-stride memory access.  These
+  computations are done entirely in L1 cache, minimizing the cost of
+  non-unit-stride access, so the default setting for both of these
+  parameters is 0.  Long ago, some machines (e.g. Sun Ultra 3) ran
+  faster if these parameters were set to 1.
+
+4. Environment Variables
+========================
+The environment variables described below affect the run-time behavior
+of am.  These include am's own program-specific environment variables,
+and environment variables that control OpenMP program execution.
+
+4.1 Program-specific environment variables
+==========================================
+AM_CACHE_PATH
+  This is the path to the am cache directory.  If this variable is not
+  defined, or is set to an empty string, the disk cache is disabled.
+
+AM_CACHE_HASH_MODULUS
+  This can be used to modify the number of hash buckets in the disk
+  cache.  By default, there are 1021 hash buckets containing up to 4
+  files per bucket, meaning that the maximum number of files in the
+  cache directory is limited to 4084.  For best cache efficiency prime
+  numbers are recommended, and care should be taken not to exceed the
+  file system’s practical limit on files per directory.  If the hash
+  modulus is changed, any existing cache files in the active cache
+  directory will become unusable and will eventually be evicted from
+  the cache.
+
+AM_FIT_INPUT_PATH
+AM_FIT_OUTPUT_PATH
+  By default, am reads fit data from the current directory, and writes
+  fit output files to the current directory.  These variables are used
+  to set alternative input and output directories.
+
+AM_KCACHE_MEM_LIMIT
+  The kcache is an in-memory cache of absorption coefficient arrays,
+  computed as needed on a fixed temperature grid and interpolated to
+  intermediate temperatures.  It is used to accelerate fits involving
+  variable layer temperatures.  By default, am will allocate memory
+  for the kcache as needed, up to the maximum memory available to user
+  processes on the system.  Alternatively, AM_KCACHE_MEM_LIMIT may be
+  used to set an upper limit (in bytes) on memory that will be
+  allocated for the kcache.  In either case, once kcache memory has
+  reached the maximum allocation limit, older cache entries will be
+  discarded to free memory for newer ones.
+
+4.2 OpenMP environment variables
+================================
+A complete list of the environment variables that control the run-time
+behavior of a particular OpenMP version is given in that version's
+specification document, which may be found at www.openmp.org.  The
+subset of OpenMP environment variables listed below are those that an
+am user is most likely to need to set or change.
+
+OMP_NUM_THREADS
+  This sets the number of threads which will be used for parallel
+  regions of the program.  If OMP_NUM_THREADS is not defined, an
+  implementation-dependent default value is used.  This is typically
+  the number of logical processors seen by the operating system.  The
+  command "am -e" will give information on the number of logical
+  processors seen by OpenMP and the current setting of
+  OMP_NUM_THREADS.
+
+  On systems with processors that feature simultaneous multithreading
+  (SMT, called 'hyper-threading' on Intel processors) there is an
+  important distinction between logical processors and physical
+  processor cores.  In a multithreaded processor core, a relatively
+  small set of thread-specific resources such as registers, register
+  renaming tables, and program counters are duplicated.  These
+  duplicate resources enable the core to appear to the operating
+  system as multiple logical processors, with these logical processors
+  sharing the functional units of the core.  The object is to achieve
+  higher utilization of the core's functional units by having multiple
+  threads ready to have their instructions dispatched to functional
+  units as they become free.  However, if one thread on its own is
+  able to saturate a shared resource, hardware multithreading can gain
+  no speed advantage and may even slow down execution by introducing
+  extra contention for this resource.  For this reason, on SMT systems
+  it can make sense to set OMP_NUM_THREADS to a number no greater than
+  the number of actual processor cores.
+
+  A recent trend is heterogeneous processors with a mix of cores
+  optimized for performance or efficiency.  An example is the Apple
+  M1 Pro, with eight performance cores and two efficiency cores.  On
+  machines with this processor, the gcc OpenMP runtime defaults to
+  OMP_NUM_THREADS=10, but using this default setting can result in
+  erratic performance caused by fast cores waiting on slow cores to
+  finish their work.  In contrast, setting OMP_NUM_THREADS=8 on these
+  machines results in consistent good performance as discussed in the
+  next section.
+
+  Finally, it is important to note that in shared computing
+  environments, OMP_NUM_THREADS is likely to default to the total
+  number of CPUs on the node where am is running, regardless of the
+  number of CPUs requested when submitting a job.  When this is the
+  case, it is essential to set OMP_NUM_THREADS equal to the requested
+  number of CPUs to avoid overloading the node and interfering with
+  other jobs.
+
+OMP_NESTED  [deprecated since OpenMP 5.0 (November 2018)]
+OMP_MAX_ACTIVE_LEVELS  [introduced in OpenMP 3.0 (May 2008)
+  These environment variables control OpenMP nested parallelism.  In
+  early versions of OpenMP, nested parallelism was simply enabled or
+  disabled according to whether OMP_NESTED was set to true or false
+  respectively. There was no control on nesting depth--a dangerous
+  design.
+  
+  OpenMP 3.0 (July 2013) made amends for this by introducing
+  OMP_MAX_ACTIVE_LEVELS which, when set to a non-negative integer,
+  places a corresponding limit on the nesting depth of parallel
+  regions of the program.  However, this change rendered OMP_NESTED
+  redundant, since setting OMP_MAX_ACTIVE_LEVELS=1 is sufficient on
+  its own to disable nested parallelism.  Moreover, in some
+  implementations, setting OMP_MAX_ACTIVE_LEVELS>1 would override
+  setting OMP_NESTED=false.
+  
+  For this reason, the redundant internal control variable nest-var
+  was eliminated in OpenMP 5.0 (November 2018).  The associated API
+  routines omp_set_nested() and omp_get_nested(), as well as the
+  OMP_NESTED environment variable, were deprecated.  Compiler
+  implementations often lag well behind the release of OpenMP
+  specification versions, but some implementations that report
+  themselves as compliant with an older OpenMP specificaton
+  nevertheless partially implement changes, such as this one,
+  introduced in a newer one.  The commands am -v and am -e can be used
+  to determine the supported OpenMP version and the response of OpenMP
+  internal control variables to environment variable settings.
+  
+  Nesting affects the performance of the Fourier and Hartley
+  transforms at the heart of am's delay spectrum and instrumental line
+  shape (ILS) convolution computations.  The transforms use recursive
+  divide-and-conquer into half-size sub-transforms down to the L1
+  cache size, at which point recursion stops and the sub-transforms
+  are done iteratively.  If nesting is enabled, threads are spawned at
+  each recursion level unless either the number of transforms at the
+  next recursion level would exceed OMP_NUM_THREADS, or
+  OMP_MAX_ACTIVE_LEVELS would be exceeded.  If nesting is disabled, no
+  threads are spawned after the first recursive division into two
+  sub-transforms and the transform is carried out by no more than two
+  active threads.
+
+  These transforms involve highly non-local memory access patterns,
+  and consequently the speedup achieved by adding processors is
+  limited by the memory and inter-processor communication bandwidth of
+  the system.  For this reason, it is often the most efficient use of
+  system resources either to set OMP_NESTED=false, or to set
+  OMP_NESTED=true and limit nested parallelism using
+  OMP_MAX_ACTIVE_LEVELS, guided by timing data such as those in
+  Appendix A of the am manual.

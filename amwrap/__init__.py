@@ -39,26 +39,44 @@ from astropy import units as u
 from astropy import constants as c
 
 
-# Test whether the `am` and `am-serial` executables are callable.
-# FIXME Use configuration system for "am" executable name.
-def _test_callable(name):
-    try:
-        result = subprocess.run([f"{name}", "-v"], capture_output=True)
-        v = version.parse(result.stdout.decode().split()[2])
-        return True, v
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        warnings.warn(f"`{name}` executable not callable.", UserWarning)
-        return False, None
+class AmExecutable:
+    bin_dir = (Path(__file__).parent / "bin").absolute()
 
-CALLABLE, AM_VERSION = _test_callable("am")
-CALLABLE_SERIAL, AM_SERIAL_VERSION = _test_callable("am-serial")
+    def __init__(self, name):
+        if name not in ("am", "am-serial"):
+            raise ValueError(f"Invalid name: {name}")
+        self.name = name
+        try:
+            # Test if the executable name is callable from the user's environment.
+            result = subprocess.run([f"{name}", "-v"], capture_output=True)
+            self.exec_name = name
+            self.is_callable = True
+            self.version = self._parse_version(result)
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            # Fallback to the included executable.
+            result = subprocess.run([f"{name}", "-v"], capture_output=True)
+            self.exec_name = str(self.bin_dir / name)
+            self.is_callable = True
+            self.version = self.parse_version(result)
 
-NO_AM_CALLABLE = not CALLABLE and not CALLABLE_SERIAL
+    @staticmethod
+    def _parse_version(result):
+        return version.parse(result.stdout.decode().split()[2])
+
+# FIXME Use configuration system for "am"/"am-serial" executable names.
+AM_PARALLEL = AmExecutable("am")
+AM_SERIAL   = AmExecutable("am-serial")
+
+NO_AM_CALLABLE = not AM_PARALLEL.is_callable and not AM_SERIAL.is_callable
 BOTH_AM_CALLABLE = not NO_AM_CALLABLE
 if NO_AM_CALLABLE:
     warnings.warn("No executable callable for AM.", UserWarning)
-if BOTH_AM_CALLABLE and (AM_VERSION != AM_SERIAL_VERSION):
-    raise RuntimeError(f"`am` and `am-serial` version mismatch: {AM_VERSION} & {AM_SERIAL_VERSION}")
+if BOTH_AM_CALLABLE and (AM_PARALLEL.version != AM_SERIAL.version):
+    warnings.warn(
+            "`am` and `am-serial` version mismatch: "
+            f"{AM_PARALLEL.version} & {AM_SERIAL.version}",
+            UserWarning,
+    )
 
 # Set environment variables for am
 ENV = os.environ.copy()
@@ -162,7 +180,10 @@ class Climatology:
         # c.k_B: Boltzmann's constant
         air_density = self.pressure / (c.k_B * self.temperature)
         mixing_ratio = self.mixing_ratio[specie]
-        column_density = np.trapz(mixing_ratio * air_density, x=self.altitude)
+        try:
+            column_density = np.trapezoid(mixing_ratio * air_density, x=self.altitude)
+        except AttributeError:
+            column_density = np.trapz(mixing_ratio * air_density, x=self.altitude)
         return column_density.to("cm-2")
 
     def dobson_unit(self, specie):
@@ -493,15 +514,13 @@ class Model:
           `attrs` attribute. Metadata includes output from `STDERR`, whether
           warnings were raised, and the units for each output column.
         """
-        executable_name = "am" if parallel else "am-serial"
-        if parallel and not CALLABLE:
-            raise RuntimeError("`am` is not callable.")
-        if not parallel and not CALLABLE_SERIAL:
-            raise RuntimeError("`am-serial` is not callable")
+        am = AM_PARALLEL if parallel else AM_SERIAL
+        if not am.is_callable:
+            raise RuntimeError(f"{am.name} is not callable: {am.exec_name}")
         # Call with subprocess and capture outputs to 'stdout' and 'stderr'.
         try:
             result = subprocess.run(
-                    [executable_name, "-"],
+                    [am.exec_name, "-"],
                     env=ENV,
                     input=self.config_text.encode(),
                     capture_output=True,

@@ -1,0 +1,27 @@
+/***********************************************************
+* Smithsonian Astrophysical Observatory
+* Submillimeter Receiver Laboratory
+* am
+*
+* oh.h                          S. Paine rev. 2024 August 06
+*
+* External declarations for catalog data defined in oh.c.
+************************************************************/
+
+#ifndef AM_OH_H
+#define AM_OH_H
+
+#include "am_types.h"
+
+extern const double oh_abundance_tab[];
+extern const double oh_mass_tab[];
+
+extern const double oh_Tref;
+extern const cat_entry_t oh_cat[];
+extern const int oh_num_lines;
+
+extern const double oh_Qtab[];
+extern const int oh_Qtab_cols;
+extern const int oh_Qtab_rows;
+
+#endif /* AM_OH_H */

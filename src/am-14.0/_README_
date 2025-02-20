@@ -1,0 +1,22 @@
+Readme file for am-14.0
+=======================
+2024 September 30
+
+This is version 14.0 of am, a program for radiative transfer
+and propagation computations at microwave to submillimeter
+wavelengths.
+
+For updates, documentation, and citation information, see
+  https://doi.org/10.5281/zenodo.640645
+
+Installation information is in the file INSTALLING
+
+am incorporates data from a number of sources, most importantly from a
+subset of the HITRAN2020 database (I.E. Gordon et al. 2022, "The
+HITRAN2020 molecular spectroscopic database.", Journal of Quantitative
+Spectroscopy and Radiative Transfer 277:107949).  For a summary list
+of data references, see REFERENCES.  References can also be listed
+using the command "am -r"
+
+For terms of use, see LICENSE.  Terms of use are also printed out by
+the command "am -l"

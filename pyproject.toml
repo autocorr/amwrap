@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amwrap"
+authors = [
+    { name = "Brian Svoboda" }
+]
+description = "Wrapper for the atmospheric radiative transfer program AM"
+readme = "README.rst"
+license = { file = "LICENSE.txt" }
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "astropy>=5.0.0",
+    "matplotlib>=3.0.0",
+    "metpy>=1.6.0",
+    "numpy>=1.24.0",
+    "pandas>=2.1.0",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: C",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+
+[project.optional-dependencies]
+test = [ "pytest>=8.0.0" ]
+doc  = [ "sphinx>=7.0.0" ]
+dev  = [ "flake8>=7.0.0" ]
+
+[project.urls]
+source = "https://github.com/autocorr/amwrap"
+documentation = "https://amwrap.readthedocs.io"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["amwrap*"]
+exclude = ["src", "amwrap.tests*"]
+namespaces = false
+
