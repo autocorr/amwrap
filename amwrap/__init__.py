@@ -526,7 +526,7 @@ class Model:
                     capture_output=True,
             )
         except FileNotFoundError as e:
-            raise RuntimeError(f"Could not call `{executable_name}`: {e}")
+            raise RuntimeError(f"Could not call `{am.exec_name}`: {e}")
         return self._parse_output(result)
 
 
