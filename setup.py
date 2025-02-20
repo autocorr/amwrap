@@ -15,6 +15,8 @@ def build_am():
     root_dir = Path.cwd()
     src_dir  = root_dir / "src" / "am-14.0"
     bin_dir  = root_dir / "amwrap" / "bin"
+    if not bin_dir.exists():
+        bin_dir.mkdir()
     os.chdir(src_dir)
     # compile serial version
     subprocess.check_call(["make", "-j", "serial"])
