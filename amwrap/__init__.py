@@ -54,10 +54,11 @@ class AmExecutable:
             self.version = self._parse_version(result)
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
             # Fallback to the included executable.
-            result = subprocess.run([f"{name}", "-v"], capture_output=True)
-            self.exec_name = str(self.bin_dir / name)
+            exec_name = str(self.bin_dir / name)
+            result = subprocess.run([f"{exec_name}", "-v"], capture_output=True)
+            self.exec_name = exec_name
             self.is_callable = True
-            self.version = self.parse_version(result)
+            self.version = self._parse_version(result)
 
     @staticmethod
     def _parse_version(result):
