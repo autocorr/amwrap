@@ -29,6 +29,22 @@ or alternatively:
    cd amwrap
    pip install .
 
+Quickstart
+----------
+Atmospheric models can be configured directly using the ``Model`` class or from
+standard climatologies using the ``Model.from_climatology`` constructor. The
+climatologies are derived for the continental United States (i.e., "US
+Midlatitude Winter"; see Anderson et al. described below).  The results are
+returned in a ``pandas.DataFrame``:
+
+.. code-block:: python
+
+   import amwrap
+   print(amwrap.Climatology.names)
+   m = amwrap.Model.from_climatology("midlatitude_winter")
+   df = m.run()
+   print(df.head())
+
 References
 ----------
 The climatologies in the ``amwrap/climatology`` directory are taken from
