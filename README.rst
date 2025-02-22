@@ -3,9 +3,31 @@ Python wrapper for AM
 A simple Python wrapper for Scott Paine's AM atmospheric radiative transfer
 code.  For details on AM see the official Zenodo links to the `source`_ and
 `documentation`_. Further information can be found on Scott Paine's `website`_.
-This wrapper requires the ``am`` executable to be available on the host
-operating system and in the user's path.  Documentation on how to use this
-wrapper may be found at https://amwrap.readthedocs.io .
+The installation process will automatically compile AM from source files
+distributed with the Python package, creating serial and parallel versions
+of the executable. If copies of AM are found in the user's ``PATH``, then these
+are used instead.  Documentation on how to use this wrapper may be found at
+https://amwrap.readthedocs.io .
+
+Installation
+------------
+Currently only Unix-like operating systems (i.e., Linux and macOS) are
+supported. Building AM depends on GNU Make and a C compiler, such as GCC. The
+parallel version of AM requires a C compiler with OpenMP support.
+
+To install ``amwrap``, 
+
+.. code-block:: bash
+
+   pip install git+https://github.com/autocorr/amwrap.git
+
+or
+
+.. code-block:: bash
+
+   git clone https://github.com/autocorr/amwrap.git
+   cd amwrap
+   pip install .
 
 References
 ----------
