@@ -30,8 +30,8 @@ classifiers = [
 
 [project.optional-dependencies]
 test = [ "pytest>=8.0.0" ]
-doc  = [ "sphinx>=7.0.0" ]
 dev  = [ "flake8>=7.0.0" ]
+doc  = [ "sphinx>=7.0.0", "sphinx-rtd-theme>=3.0.0" ]
 
 [project.urls]
 source = "https://github.com/autocorr/amwrap"
