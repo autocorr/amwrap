@@ -16,12 +16,10 @@ Typical usage example:
 """
 
 # TODO
-# - Add options for including clouds through "lwp_abs_Rayleigh" and
-#   "iwp_abs_Rayleigh" column types in layers.
 # - Perform interpolations/extrapolation on vertical profiles
-# - Have the PWV be configurable as a both a direct input in the mixing ratio as
-#   well an exponential function with a scale height.
-# - Add conversion between pressure and altitude (w/ Eotvos effect).
+# - Configure the water vapor mixing ratio given a total PWV and a scale
+#   height using an exponential function.
+# - Convert all units from Astropy to Metpy.
 
 import os
 import warnings
@@ -86,20 +84,43 @@ if CACHE_DIR.exists():
     ENV["AM_CACHE_PATH"] = CACHE_DIR
 
 MOD_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
-MASS_DRY_AIR = 28.9644  * u.u  # amu
-MASS_WATER =   18.01528 * u.u
-RHO_WATER =     0.9998395 * u.g / u.cm**3
+MASS_DRY_AIR =     28.96546 * u.u  # amu
+MASS_DRY_AIR_MOL = MASS_DRY_AIR.value * 1e-3 * u.kg / u.mol
+MASS_WATER =       18.01528 * u.u
+RHO_WATER =         0.9998395 * u.g / u.cm**3
+STD_TEMPERATURE = 288.0 * u.K
+STD_PRESSURE =   1013.25 * u.hPa
+STD_LAPSE_RATE =    6.5 * u.K / u.km
+R_DRY_AIR = (c.R / MASS_DRY_AIR_MOL).to("J/(K kg)")
 
 
-def mixing_ratio_from_relative_humidity(pressure, temperature, relative_humidity):
+@u.quantity_input
+def mixing_ratio_from_relative_humidity(
+        pressure: u.Quantity["pressure"],
+        temperature: u.Quantity["temperature"],
+        relative_humidity: u.Quantity["dimensionless"]
+    ):
     from metpy.units.pint import Quantity
     from metpy.calc import mixing_ratio_from_relative_humidity
     p  = pressure.to("hPa").value * Quantity("hPa")
     t  = temperature.to("deg_C", equivalencies=u.temperature()).value * Quantity("degC")
-    rh = relative_humidity.value * Quantity("dimensionless")
+    rh = relative_humidity.to("").value * Quantity("dimensionless")
     mr = mixing_ratio_from_relative_humidity(p, t, rh)
     # Returned value is mass mixing ratio, convert to volumetric mixing ratio using masses
     return mr.m * 1e6 * MASS_DRY_AIR / MASS_WATER * u.dimensionless_unscaled
+
+
+@u.quantity_input
+def altitude_from_pressure(pressure: u.Quantity["pressure"]):
+    """
+    Convert pressure to height using the U.S. Standard Atmosphere (NOAA 1976).
+    Implementation taken from `metpy.calc.pressure_height_std` itself from
+    the formula outlined in Hobbs & Wallace (1977) pg. 60-61.
+    """
+    prefactor = STD_TEMPERATURE / STD_LAPSE_RATE
+    exponent = R_DRY_AIR * STD_LAPSE_RATE / c.g0
+    altitude = prefactor * (1 - (pressure / STD_PRESSURE).to("")**exponent)
+    return altitude.to("km")
 
 
 class Climatology:
@@ -258,15 +279,17 @@ class Model:
             "n2air",
             "o2o2",
             "o2air",
-            "lwp_abs_Rayleigh",
-            "iwp_abs_Rayleigh",
     ]
+    water_cloud_type = "lwp_abs_Rayleigh"
+    ice_cloud_type = "iwp_abs_Rayleigh"
 
     @u.quantity_input
     def __init__(self,
                 pressure: u.Quantity["pressure"],  # noqa: F821
                 temperature: u.Quantity["temperature"],  # noqa: F821
                 mixing_ratio: Dict[str, u.Quantity["dimensionless"]|None]|None=None,  # noqa: F821
+                water_cloud: u.Quantity["surface_mass_density"]|None=None,  # noqa: F821
+                ice_cloud: u.Quantity["surface_mass_density"]|None=None,  # noqa: F821
                 zenith_angle: u.Quantity["angle"]=0*u.deg,  # noqa: F821
                 freq_min: u.Quantity["frequency"]=18*u.GHz,  # noqa: F821
                 freq_max: u.Quantity["frequency"]=26.5*u.GHz,  # noqa: F821
@@ -295,6 +318,10 @@ class Model:
             Dictionary of volumetric mixing ratios indexed by a string for
             a specie name recognized by AM. If a specie is set to ``None``,
             then values are interpolated from the US Standard climatology.
+          water_cloud:
+            Liquid water cloud mass surface density at the base of the layer.
+          ice_cloud:
+            Ice water cloud mass surface density at the base of the layer.
           zenith_angle:
             Zenith angle of ray; 0 deg is towards zenith and 90 deg is towards
             the horizon.
@@ -352,6 +379,9 @@ class Model:
                 assert np.all(0 <= mr) and np.all(mr <= 1)
                 assert mr.shape == pressure.shape
         self.mixing_ratio = mixing_ratio
+        # Liquid and ice water clouds.
+        self.water_cloud = water_cloud
+        self.ice_cloud = ice_cloud
         # AM output column validation.
         for out in output_columns:
             if out not in self.valid_output_descriptors:
@@ -384,6 +414,10 @@ class Model:
                 n: self.valid_output_descriptors[n].split()[-1]
                 for n in self.output_columns
         }
+
+    @property
+    def altitude(self):
+        return altitude_from_pressure(self.pressure)
 
     @property
     def output_descriptor(self):
@@ -469,6 +503,14 @@ class Model:
         for specie, mr in self.mixing_ratio.items():
             for v, layer in zip(mr.to("").value, layers):
                 layer.append(f"column {specie} vmr {v:1.4e}")
+        if (wc := self.water_cloud) is not None:
+            for v, layer in zip(wc.to("kg m-2").value, layers):
+                if v > 0:
+                    layer.append(f"column lwp_abs_Rayleigh {v} kg*m^-2")
+        if (ic := self.ice_cloud) is not None:
+            for v, layer in zip(ic.to("kg m-2").value, layers):
+                if v > 0:
+                    layer.append(f"column iwp_abs_Rayleigh {v} kg*m^-2")
         # AM requires that pressure levels be specified from low- to
         # high-pressure. The inputs are typically ordered by increasing
         # altitude, so need to be reversed.

@@ -74,3 +74,13 @@ class TestModel:
         assert df.attrs["warnings?"]
         assert len(df.attrs["species"]) == 2
 
+    def test_run_cloud(self, f_cl):
+        unit = u.kg / u.m**2
+        water_cloud = np.zeros_like(f_cl.pressure).value * unit
+        ice_cloud = water_cloud.copy()
+        water_cloud[2] += 0.1 * unit  #  ~2 km
+        ice_cloud[10]  += 0.1 * unit  # ~10 km
+        m = Model(f_cl.pressure, f_cl.temperature, water_cloud=water_cloud, ice_cloud=ice_cloud)
+        df = m.run()
+        assert np.isclose(df.loc[0, "brightness_temperature"], 7.985342)
+
