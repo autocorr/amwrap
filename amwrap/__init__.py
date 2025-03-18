@@ -96,9 +96,9 @@ R_DRY_AIR = (c.R / MASS_DRY_AIR_MOL).to("J/(K kg)")
 
 @u.quantity_input
 def mixing_ratio_from_relative_humidity(
-        pressure: u.Quantity["pressure"],
-        temperature: u.Quantity["temperature"],
-        relative_humidity: u.Quantity["dimensionless"]
+        pressure: u.Quantity["pressure"],  # noqa: F821
+        temperature: u.Quantity["temperature"],  # noqa: F821
+        relative_humidity: u.Quantity["dimensionless"],  # noqa: F821
     ):
     from metpy.units.pint import Quantity
     from metpy.calc import mixing_ratio_from_relative_humidity
@@ -111,7 +111,7 @@ def mixing_ratio_from_relative_humidity(
 
 
 @u.quantity_input
-def altitude_from_pressure(pressure: u.Quantity["pressure"]):
+def altitude_from_pressure(pressure: u.Quantity["pressure"]):  # noqa: F821
     """
     Convert pressure to height using the U.S. Standard Atmosphere (NOAA 1976).
     Implementation taken from `metpy.calc.pressure_height_std` itself from
