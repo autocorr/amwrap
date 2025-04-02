@@ -100,14 +100,14 @@ def mixing_ratio_from_relative_humidity(
         temperature: u.Quantity["temperature"],  # noqa: F821
         relative_humidity: u.Quantity["dimensionless"],  # noqa: F821
     ):
-    from metpy.units.pint import Quantity
+    from pint import Quantity
     from metpy.calc import mixing_ratio_from_relative_humidity
     p  = pressure.to("hPa").value * Quantity("hPa")
     t  = temperature.to("deg_C", equivalencies=u.temperature()).value * Quantity("degC")
     rh = relative_humidity.to("").value * Quantity("dimensionless")
     mr = mixing_ratio_from_relative_humidity(p, t, rh)
     # Returned value is mass mixing ratio, convert to volumetric mixing ratio using masses
-    return mr.m * 1e6 * MASS_DRY_AIR / MASS_WATER * u.dimensionless_unscaled
+    return mr.m * MASS_DRY_AIR / MASS_WATER * u.dimensionless_unscaled
 
 
 @u.quantity_input
@@ -502,15 +502,15 @@ class Model:
             layers.append(layer)
         for specie, mr in self.mixing_ratio.items():
             for v, layer in zip(mr.to("").value, layers):
-                layer.append(f"column {specie} vmr {v:1.4e}")
+                layer.append(f"column {specie} vmr {v:1.6e}")
         if (wc := self.water_cloud) is not None:
             for v, layer in zip(wc.to("kg m-2").value, layers):
                 if v > 0:
-                    layer.append(f"column lwp_abs_Rayleigh {v} kg*m^-2")
+                    layer.append(f"column lwp_abs_Rayleigh {v:1.6e} kg*m^-2")
         if (ic := self.ice_cloud) is not None:
             for v, layer in zip(ic.to("kg m-2").value, layers):
                 if v > 0:
-                    layer.append(f"column iwp_abs_Rayleigh {v} kg*m^-2")
+                    layer.append(f"column iwp_abs_Rayleigh {v:1.6e} kg*m^-2")
         # AM requires that pressure levels be specified from low- to
         # high-pressure. The inputs are typically ordered by increasing
         # altitude, so need to be reversed.
