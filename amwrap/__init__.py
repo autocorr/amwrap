@@ -279,6 +279,8 @@ class Model:
             "n2air",
             "o2o2",
             "o2air",
+            "lwp_abs_Rayleigh",
+            "iwp_abs_Rayleigh",
     ]
     water_cloud_type = "lwp_abs_Rayleigh"
     ice_cloud_type = "iwp_abs_Rayleigh"
@@ -502,15 +504,15 @@ class Model:
             layers.append(layer)
         for specie, mr in self.mixing_ratio.items():
             for v, layer in zip(mr.to("").value, layers):
-                layer.append(f"column {specie} vmr {v:1.6e}")
+                layer.append(f"column {specie} vmr {v:1.4e}")
         if (wc := self.water_cloud) is not None:
             for v, layer in zip(wc.to("kg m-2").value, layers):
                 if v > 0:
-                    layer.append(f"column lwp_abs_Rayleigh {v:1.6e} kg*m^-2")
+                    layer.append(f"column lwp_abs_Rayleigh {v} kg*m^-2")
         if (ic := self.ice_cloud) is not None:
             for v, layer in zip(ic.to("kg m-2").value, layers):
                 if v > 0:
-                    layer.append(f"column iwp_abs_Rayleigh {v:1.6e} kg*m^-2")
+                    layer.append(f"column iwp_abs_Rayleigh {v} kg*m^-2")
         # AM requires that pressure levels be specified from low- to
         # high-pressure. The inputs are typically ordered by increasing
         # altitude, so need to be reversed.
