@@ -27,7 +27,6 @@ import subprocess
 from io import BytesIO
 from typing import Dict
 from pathlib import Path
-from datetime import datetime
 from packaging import version
 
 import numpy as np
@@ -50,7 +49,7 @@ class AmExecutable:
             self.exec_name = name
             self.is_callable = True
             self.version = self._parse_version(result)
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        except (subprocess.CalledProcessError, FileNotFoundError):
             # Fallback to the included executable.
             exec_name = str(self.bin_dir / name)
             result = subprocess.run([f"{exec_name}", "-v"], capture_output=True)
@@ -123,6 +122,30 @@ def altitude_from_pressure(pressure: u.Quantity["pressure"]):  # noqa: F821
     return altitude.to("km")
 
 
+@u.quantity_input
+def interp_by_pressure(
+            values,
+            pressure: u.Quantity["pressure"]|None=None,  # noqa: F821
+            pressure_base: u.Quantity["pressure"]|None=None,  # noqa: F821
+    ):
+    if pressure is not None:
+        if values.shape != pressure.shape:
+            raise ValueError(f"Invalid shapes: {values.shape=} != {pressure.shape=}")
+    if pressure_base is not None:
+        if pressure is None:
+            raise ValueError("Pressure must be assigned when clipping to base.")
+        if pressure_base > pressure.max() or pressure_base < pressure.min():
+            raise ValueError(f"Pressure base outside bounds: {pressure_base=}")
+    if pressure_base is None:
+        return values
+    else:
+        ix_base = (pressure[pressure > pressure_base]).argmin()
+        v_base = np.interp(pressure_base, pressure[::-1], values[::-1])
+        _values = values.copy()
+        _values[ix_base] = v_base
+        return _values[ix_base:]
+
+
 class Climatology:
     names = (
             "midlatitude_summer",
@@ -133,7 +156,24 @@ class Climatology:
             "us_standard",
     )
 
-    def __init__(self, name="midlatitude_winter"):
+    @u.quantity_input
+    def __init__(
+                self,
+                name: str="midlatitude_winter",
+                pressure_base: u.Quantity["pressure"]|None=None,  # noqa: F821
+        ):
+        """
+        Standard atmospheric vertical profiles for the US and North America as
+        reported in Anderson et al. (1986) "AFGL Atmospheric Constituent
+        Profiles (0-120km)", AFGL-TR-86-0110.
+
+        Args:
+            name: str
+                Name of the climatology, e.g., "midlatitude_winter".
+            pressure_base:
+                Mask the profiles for pressure values less than the given
+                value. Profiles range from 1018 to 3.6e-5 hPa.
+        """
         if name not in self.names:
             raise ValueError(f"Invalid name: {name}")
         self.name = name
@@ -141,44 +181,48 @@ class Climatology:
         data = np.loadtxt(climatology_path / f"{name}.dat")
         gas_minor = np.loadtxt(climatology_path / "gas_minor.dat")
         gas_trace = np.loadtxt(climatology_path / "gas_trace.dat")
+        # Clip the pressure levels to a value if given.
+        pressure = data[:, 1] * u.mbar
+        def clip(arr):
+            return interp_by_pressure(arr, pressure, pressure_base)
         # The slices will create views but multiplying by units will create copies.
         # Using the "<<" syntax to add units "in place" also creates copies in
         # this case, so just use the "*" for better readibility.
-        self.altitude         = data[:, 0] * u.km
-        self.pressure         = data[:, 1] * u.mbar
-        self.density          = data[:, 2] * u.cm**-3
-        self.temperature      = data[:, 3] * u.K
+        self.altitude    = clip(data[:, 0] * u.km)
+        self.pressure    = clip(data[:, 1] * u.mbar)
+        self.density     = clip(data[:, 2] * u.cm**-3)
+        self.temperature = clip(data[:, 3] * u.K)
         # Technically volumetric mixing ratio has units of "mol/mol"
         # The units are in parts-per-million, normalize to unity as the "vmr"
         # parameter expects in AM.
         from_ppm = 1e-6 * u.dimensionless_unscaled
         self.mixing_ratio = {
                 # Major species
-                "h2o":   data[:, 4] * from_ppm,
-                "co2":   data[:, 5] * from_ppm,
-                "o3":    data[:, 6] * from_ppm,
-                "n2o":   data[:, 7] * from_ppm,
-                "co":    data[:, 8] * from_ppm,
-                "ch4":   data[:, 9] * from_ppm,
-                "o2":    data[:,10] * from_ppm,
+                "h2o":   clip(data[:, 4] * from_ppm),
+                "co2":   clip(data[:, 5] * from_ppm),
+                "o3":    clip(data[:, 6] * from_ppm),
+                "n2o":   clip(data[:, 7] * from_ppm),
+                "co":    clip(data[:, 8] * from_ppm),
+                "ch4":   clip(data[:, 9] * from_ppm),
+                "o2":    clip(data[:,10] * from_ppm),
                 # Minor species
-                "no":    gas_minor[:, 0] * from_ppm,
-                "so2":   gas_minor[:, 1] * from_ppm,
-                "no2":   gas_minor[:, 2] * from_ppm,
-                "nh3":   gas_minor[:, 3] * from_ppm,
-                "hno3":  gas_minor[:, 4] * from_ppm,
-                "oh":    gas_minor[:, 5] * from_ppm,
-                "hf":    gas_minor[:, 6] * from_ppm,
-                "hcl":   gas_minor[:, 7] * from_ppm,
-                "hbr":   gas_minor[:, 8] * from_ppm,
-                "clo":   gas_minor[:,10] * from_ppm,
-                "ocs":   gas_minor[:,11] * from_ppm,
-                "h2co":  gas_minor[:,12] * from_ppm,
-                "hocl":  gas_minor[:,13] * from_ppm,
-                "hcn":   gas_minor[:,15] * from_ppm,
-                "h2o2":  gas_minor[:,17] * from_ppm,
+                "no":    clip(gas_minor[:, 0] * from_ppm),
+                "so2":   clip(gas_minor[:, 1] * from_ppm),
+                "no2":   clip(gas_minor[:, 2] * from_ppm),
+                "nh3":   clip(gas_minor[:, 3] * from_ppm),
+                "hno3":  clip(gas_minor[:, 4] * from_ppm),
+                "oh":    clip(gas_minor[:, 5] * from_ppm),
+                "hf":    clip(gas_minor[:, 6] * from_ppm),
+                "hcl":   clip(gas_minor[:, 7] * from_ppm),
+                "hbr":   clip(gas_minor[:, 8] * from_ppm),
+                "clo":   clip(gas_minor[:,10] * from_ppm),
+                "ocs":   clip(gas_minor[:,11] * from_ppm),
+                "h2co":  clip(gas_minor[:,12] * from_ppm),
+                "hocl":  clip(gas_minor[:,13] * from_ppm),
+                "hcn":   clip(gas_minor[:,15] * from_ppm),
+                "h2o2":  clip(gas_minor[:,17] * from_ppm),
                 # Trace species
-                "h2s":   gas_trace[:, 2] * from_ppm,
+                "h2s":   clip(gas_trace[:, 2] * from_ppm),
         }
 
     @classmethod
@@ -286,7 +330,8 @@ class Model:
     ice_cloud_type = "iwp_abs_Rayleigh"
 
     @u.quantity_input
-    def __init__(self,
+    def __init__(
+                self,
                 pressure: u.Quantity["pressure"],  # noqa: F821
                 temperature: u.Quantity["temperature"],  # noqa: F821
                 mixing_ratio: Dict[str, u.Quantity["dimensionless"]|None]|None=None,  # noqa: F821
