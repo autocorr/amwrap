@@ -441,8 +441,18 @@ class Model:
         self.self_broadening_tolerance = self_broadening_tolerance
 
     @classmethod
-    def from_climatology(cls, name, **kwargs):
-        climatology = CLIMATOLOGIES[name]
+    def from_climatology(
+                cls,
+                clim: str | Climatology,
+                **kwargs
+        ):
+        match clim:
+            case str(name):
+                climatology = CLIMATOLOGIES[name]
+            case Climatology():
+                climatology = clim
+            case _:
+                raise ValueError(f"Invalid {clim=}")
         mixing_ratio = {
                 k: v
                 for k, v in climatology.mixing_ratio.items()
