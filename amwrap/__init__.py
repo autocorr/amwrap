@@ -100,13 +100,32 @@ def mixing_ratio_from_relative_humidity(
         relative_humidity: u.Quantity["dimensionless"],  # noqa: F821
     ):
     from pint import Quantity
-    from metpy.calc import mixing_ratio_from_relative_humidity
+    from metpy import calc
     p  = pressure.to("hPa").value * Quantity("hPa")
     t  = temperature.to("deg_C", equivalencies=u.temperature()).value * Quantity("degC")
     rh = relative_humidity.to("").value * Quantity("dimensionless")
-    mr = mixing_ratio_from_relative_humidity(p, t, rh)
+    mr = calc.mixing_ratio_from_relative_humidity(p, t, rh)
     # Returned value is mass mixing ratio, convert to volumetric mixing ratio using masses
     return mr.m * MASS_DRY_AIR / MASS_WATER * u.dimensionless_unscaled
+
+
+@u.quantity_input
+def precipitable_water(
+        pressure: u.Quantity["pressure"],  # noqa: F821
+        temperature: u.Quantity["temperature"],  # noqa: F821
+        relative_humidity: u.Quantity["dimensionless"],  # noqa: F821
+    ):
+    from pint import Quantity
+    from metpy import calc
+    dewpoint = calc.dewpoint_from_relative_humidity(
+            temperature.to("deg_C", equivalencies=u.temperature()).value * Quantity("degC"),
+            relative_humidity.to("").value * Quantity("dimensionless"),
+    )
+    pwv = calc.precipitable_water(
+            pressure.to("hPa").value * Quantity("hPa"),
+            dewpoint,
+    )
+    return pwv
 
 
 @u.quantity_input
