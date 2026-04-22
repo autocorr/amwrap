@@ -352,7 +352,7 @@ class Model:
     def __init__(
                 self,
                 pressure: u.Quantity["pressure"],  # noqa: F821
-                temperature: u.Quantity["temperature"],  # noqa: F821
+                temperature: u.Quantity[u.deg_C] | u.Quantity["temperature"],  # noqa: F821
                 mixing_ratio: Dict[str, u.Quantity["dimensionless"]|None]|None=None,  # noqa: F821
                 water_cloud: u.Quantity["surface_mass_density"]|None=None,  # noqa: F821
                 ice_cloud: u.Quantity["surface_mass_density"]|None=None,  # noqa: F821
