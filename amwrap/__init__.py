@@ -96,7 +96,7 @@ R_DRY_AIR = (c.R / MASS_DRY_AIR_MOL).to("J/(K kg)")
 @u.quantity_input
 def mixing_ratio_from_relative_humidity(
         pressure: u.Quantity["pressure"],  # noqa: F821
-        temperature: u.Quantity["temperature"],  # noqa: F821
+        temperature: u.Quantity[u.deg_C] | u.Quantity["temperature"],  # noqa: F821
         relative_humidity: u.Quantity["dimensionless"],  # noqa: F821
     ):
     from pint import Quantity
@@ -112,7 +112,7 @@ def mixing_ratio_from_relative_humidity(
 @u.quantity_input
 def precipitable_water(
         pressure: u.Quantity["pressure"],  # noqa: F821
-        temperature: u.Quantity["temperature"],  # noqa: F821
+        temperature: u.Quantity[u.deg_C] | u.Quantity["temperature"],  # noqa: F821
         relative_humidity: u.Quantity["dimensionless"],  # noqa: F821
     ):
     from pint import Quantity
