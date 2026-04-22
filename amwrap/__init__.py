@@ -557,7 +557,7 @@ class Model:
         layers = []
         for p, t in zip(
                 self.pressure.to("mbar").value,
-                self.temperature.to("K").value,
+                self.temperature.to("K", equivalencies=u.temperature()).value,
             ):
             if p < 0.01:  # mbar
                 layer_type = "thermosphere"
