@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "amwrap"
@@ -37,12 +37,7 @@ doc  = [ "sphinx>=7.0.0", "sphinx-rtd-theme>=3.0.0" ]
 source = "https://github.com/autocorr/amwrap"
 documentation = "https://amwrap.readthedocs.io"
 
-[tool.setuptools]
-include-package-data = true
+[tool.hatch.build.targets.wheel]
+packages = ["amwrap"]
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["amwrap*"]
-exclude = ["src", "amwrap.tests*"]
-namespaces = false
-
+[tool.hatch.build.hooks.custom]
