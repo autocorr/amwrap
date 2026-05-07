@@ -74,6 +74,14 @@ class TestModel:
         assert df.attrs["warnings?"]
         assert len(df.attrs["species"]) == 2
 
+    def test_run_cache_dir(self, f_m, tmp_path):
+        import amwrap
+        original_cache_path = amwrap.ENV.get("AM_CACHE_PATH")
+        df = f_m.run(cache_dir=tmp_path)
+        assert df.shape == (851, 4)
+        assert any(tmp_path.glob("am_*")), "AM wrote no cache files to cache_dir"
+        assert amwrap.ENV.get("AM_CACHE_PATH") == original_cache_path
+
     def test_run_cloud(self, f_cl):
         unit = u.kg / u.m**2
         water_cloud = np.zeros_like(f_cl.pressure).value * unit

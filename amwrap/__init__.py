@@ -619,14 +619,19 @@ class Model:
         df.attrs["species"] = list(self.mixing_ratio.keys())
         return df
 
-    def run(self, parallel=False):
+    def run(self, parallel=False, cache_dir=None):
         """
         Execute AM for the given configuration.
 
         Args:
           parallel:
             Whether to call an AM executable that has been compiled for serial
-            computations or multi-threaded parallel computation using OpenMP. 
+            computations or multi-threaded parallel computation using OpenMP.
+          cache_dir:
+            Override the AM disk cache directory for this run, setting
+            ``AM_CACHE_PATH`` to the given path in the subprocess environment.
+            Useful for isolating cache directories across parallel worker
+            processes to avoid file-locking contention.
 
         Returns:
           `pandas.DataFrame` of the output with other metadata set in the
@@ -636,11 +641,12 @@ class Model:
         am = AM_PARALLEL if parallel else AM_SERIAL
         if not am.is_callable:
             raise RuntimeError(f"{am.name} is not callable: {am.exec_name}")
+        env = ENV if cache_dir is None else {**ENV, "AM_CACHE_PATH": str(cache_dir)}
         # Call with subprocess and capture outputs to 'stdout' and 'stderr'.
         try:
             result = subprocess.run(
                     [am.exec_name, "-"],
-                    env=ENV,
+                    env=env,
                     input=self.config_text.encode(),
                     capture_output=True,
             )
