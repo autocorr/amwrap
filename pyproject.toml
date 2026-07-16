@@ -28,10 +28,17 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 
-[project.optional-dependencies]
-test = [ "pytest>=8.0.0" ]
-dev  = [ "flake8>=7.0.0" ]
-doc  = [ "sphinx>=7.0.0", "sphinx-rtd-theme>=3.0.0" ]
+[dependency-groups]
+dev = [
+    "hatchling>=1.18",
+    "pytest>=8.0.0",
+    "flake8>=7.0.0",
+    "ipython>=8.39.0",
+]
+doc = [
+    "sphinx>=7.0.0",
+    "sphinx-rtd-theme>=3.0.0",
+]
 
 [project.urls]
 source = "https://github.com/autocorr/amwrap"

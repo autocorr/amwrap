@@ -13,6 +13,10 @@ class CustomBuildHook(BuildHookInterface):
         bin_dir = root / "amwrap" / "bin"
         bin_dir.mkdir(exist_ok=True)
 
+        # Clean any stale objects (e.g. OpenMP-compiled .o from a prior parallel
+        # build) so the serial link doesn't pull in unresolved GOMP_* symbols.
+        subprocess.run(["make", "clean"], cwd=src_dir, check=False)
+
         # Serial build — required
         subprocess.check_call(["make", "-j", "serial"], cwd=src_dir)
         (src_dir / "am").rename(bin_dir / "am-serial")
