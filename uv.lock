@@ -36,8 +36,11 @@ dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
     { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "packaging" },
     { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "pandas", version = "3.0.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pint", version = "0.24.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pint", version = "0.25.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 
 [package.dev-dependencies]
@@ -61,7 +64,9 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.0.0" },
     { name = "metpy", specifier = ">=1.6.0" },
     { name = "numpy", specifier = ">=1.24.0" },
+    { name = "packaging", specifier = ">=21.0" },
     { name = "pandas", specifier = ">=2.1.0" },
+    { name = "pint", specifier = ">=0.20" },
 ]
 
 [package.metadata.requires-dev]

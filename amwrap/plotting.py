@@ -14,19 +14,18 @@ def apply_mpl_settings():
     plt.rc("xtick", direction="in", top=True)
     plt.rc("ytick", direction="in", right=True)
     plt.ioff()
-apply_mpl_settings()
 
 
 def savefig(outname, dpi=300, overwrite=True):
     outpath = Path(outname)
-    if outpath.exists() and not overwrite:
+    filenames = [f"{outpath}.{ext}" for ext in ("pdf", "png")]
+    if not overwrite and any(Path(f).exists() for f in filenames):
         print(f"Figure exists, continuing: {outpath}")
     else:
-        for ext in ("pdf", "png"):
-            filen = str(outpath) + f".{ext}"
+        for filen in filenames:
             plt.savefig(filen, dpi=dpi)
         print(f"-- Figure saved to: {outpath}")
-        plt.close("all")
+    plt.close("all")
 
 
 def set_minor_ticks(ax, x=True, y=True):

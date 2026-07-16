@@ -13,6 +13,10 @@ class CustomBuildHook(BuildHookInterface):
         bin_dir = root / "amwrap" / "bin"
         bin_dir.mkdir(exist_ok=True)
 
+        # The wheel bundles compiled binaries, so it is platform-specific.
+        build_data["pure_python"] = False
+        build_data["infer_tag"] = True
+
         # Clean any stale objects (e.g. OpenMP-compiled .o from a prior parallel
         # build) so the serial link doesn't pull in unresolved GOMP_* symbols.
         subprocess.run(["make", "clean"], cwd=src_dir, check=False)

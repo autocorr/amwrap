@@ -7,9 +7,6 @@ from datetime import datetime
 import numpy as np
 from astropy import units as u
 
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).absolute().parent.parent.parent))
 import amwrap
 from amwrap import (
         Climatology,
@@ -81,9 +78,9 @@ class TestModel:
         )
 
     def test_freq(self):
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             Model.from_climatology("us_standard", freq_min=10*u.GHz, freq_max=8*u.GHz)
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             Model.from_climatology("us_standard", freq_min=1*u.GHz, freq_max=2*u.GHz, freq_step=10*u.GHz)
         with pytest.raises(u.UnitsError):
             Model.from_climatology("us_standard", freq_min=5*u.m)
@@ -111,6 +108,11 @@ class TestModel:
         assert df.shape == (851, 4)
         assert any(tmp_path.glob("am_*")), "AM wrote no cache files to cache_dir"
         assert amwrap.ENV.get("AM_CACHE_PATH") == original_cache_path
+
+    @needs_am
+    def test_run_single_layer(self):
+        df = Model([500] * u.mbar, [290] * u.K).run()
+        assert df.shape[0] > 0
 
     @needs_am
     def test_run_cloud(self, f_cl):
@@ -229,6 +231,13 @@ class TestConfigText:
         assert f_layers.output_descriptor.startswith("output npy")
         assert "Tb K" in f_layers.output_descriptor
 
+    def test_single_layer_config(self):
+        m = Model([500] * u.mbar, [290] * u.K)
+        assert m.increasing_pressure_order is False
+        text = m.config_text
+        assert "Pbase 500.0 mbar" in text
+        assert "layer troposphere" in text
+
 
 class TestUtilities:
     """Module-level pure functions."""
@@ -291,7 +300,8 @@ class TestUtilities:
         t = [300, 295, 290] * u.K
         rh = [0.5, 0.5, 0.5] * u.dimensionless_unscaled
         pwv = precipitable_water(p, t, rh)
-        assert pwv.to("mm").magnitude > 0
+        assert pwv.unit.is_equivalent(u.mm)
+        assert pwv.to("mm").value > 0
 
 
 class TestModelValidation:
@@ -305,6 +315,24 @@ class TestModelValidation:
     def test_none_species_interpolates(self, f_cl):
         m = Model(f_cl.pressure, f_cl.temperature, mixing_ratio={"h2o": None})
         assert m.mixing_ratio["h2o"].shape == f_cl.pressure.shape
+        # On the native climatology grid the interpolation is the identity.
+        assert np.allclose(
+                m.mixing_ratio["h2o"].to("").value,
+                f_cl.mixing_ratio["h2o"].to("").value,
+        )
+
+    def test_none_species_interpolation_values(self):
+        # Interpolate onto a shifted pressure grid and compare to np.interp on
+        # the reversed (increasing) climatology grid.
+        cl = amwrap.CLIMATOLOGIES["us_standard"]
+        target = [900, 500, 100] * u.mbar
+        m = Model(target, [270, 260, 250] * u.K, mixing_ratio={"h2o": None})
+        xp = cl.pressure[::-1].to("mbar").value
+        fp = cl.mixing_ratio["h2o"][::-1].to("").value
+        expected = np.interp(target.to("mbar").value, xp, fp)
+        assert np.allclose(m.mixing_ratio["h2o"].to("").value, expected)
+        # A decreasing-xp (buggy) interpolation would collapse to an endpoint.
+        assert not np.allclose(expected, expected[0])
 
     def test_none_species_not_in_climatology(self):
         with pytest.raises(ValueError):
@@ -313,14 +341,14 @@ class TestModelValidation:
             Model([500] * u.mbar, [290] * u.K, mixing_ratio={"ho2": None})
 
     def test_mixing_ratio_out_of_range(self):
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             Model([500] * u.mbar, [290] * u.K,
                   mixing_ratio={"h2o": [2.0] * u.dimensionless_unscaled})
 
     def test_zenith_angle_bounds(self):
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             Model([500] * u.mbar, [290] * u.K, zenith_angle=95 * u.deg)
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             Model([500] * u.mbar, [290] * u.K, zenith_angle=-5 * u.deg)
 
     def test_invalid_output_column(self):
@@ -328,9 +356,9 @@ class TestModelValidation:
             Model([500] * u.mbar, [290] * u.K, output_columns=("frequency", "bogus"))
 
     def test_tolerance_bounds(self):
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             Model([500] * u.mbar, [290] * u.K, tolerance=0)
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             Model([500] * u.mbar, [290] * u.K, self_broadening_tolerance=-0.1)
 
     def test_from_climatology_instance(self, f_cl):
@@ -343,6 +371,32 @@ class TestModelValidation:
     def test_output_units_and_altitude(self, f_layers):
         assert f_layers.output_units["frequency"] == "GHz"
         assert f_layers.altitude.unit.is_equivalent(u.km)
+
+    def test_mixing_ratio_not_aliased(self):
+        # Mutating a Model's mixing ratio must not corrupt the shared
+        # climatology it was resolved from.
+        cl = amwrap.CLIMATOLOGIES["us_standard"]
+        before = cl.mixing_ratio["h2o"].copy()
+        m = Model(cl.pressure, cl.temperature, mixing_ratio={"h2o": None})
+        m.mixing_ratio["h2o"] *= 0.5
+        assert np.array_equal(cl.mixing_ratio["h2o"].to("").value,
+                              before.to("").value)
+
+    def test_input_dict_not_mutated(self):
+        provided = {"h2o": [1e-6, 2e-6] * u.dimensionless_unscaled}
+        m = Model([400, 500] * u.mbar, [280, 290] * u.K, mixing_ratio=provided)
+        m.mixing_ratio["h2o"] *= 0.5
+        assert np.allclose(provided["h2o"].to("").value, [1e-6, 2e-6])
+
+    def test_cloud_shape_mismatch(self):
+        with pytest.raises(ValueError):
+            Model([400, 500] * u.mbar, [280, 290] * u.K,
+                  water_cloud=[0.1] * (u.kg / u.m**2))
+
+    def test_cloud_negative(self):
+        with pytest.raises(ValueError):
+            Model([400, 500] * u.mbar, [280, 290] * u.K,
+                  ice_cloud=[0.1, -0.1] * (u.kg / u.m**2))
 
 
 class TestClimatologyEdge:
@@ -399,4 +453,18 @@ class TestParseOutput:
         m = Model([500] * u.mbar, [290] * u.K)
         df = m._parse_output(self._fake_result(returncode=1))
         assert df.attrs["warnings?"] is True
+
+    def test_parse_output_hard_error(self):
+        m = Model([500] * u.mbar, [290] * u.K)
+        result = types.SimpleNamespace(
+                returncode=2, stdout=b"", stderr=b"am: config error on line 3")
+        with pytest.raises(RuntimeError, match="config error on line 3"):
+            m._parse_output(result)
+
+    def test_parse_output_empty_stdout(self):
+        m = Model([500] * u.mbar, [290] * u.K)
+        result = types.SimpleNamespace(
+                returncode=0, stdout=b"", stderr=b"unexpected failure")
+        with pytest.raises(RuntimeError, match="unexpected failure"):
+            m._parse_output(result)
 

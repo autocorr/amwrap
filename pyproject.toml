@@ -17,7 +17,9 @@ dependencies = [
     "matplotlib>=3.0.0",
     "metpy>=1.6.0",
     "numpy>=1.24.0",
+    "packaging>=21.0",
     "pandas>=2.1.0",
+    "pint>=0.20",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -47,4 +49,4 @@ documentation = "https://amwrap.readthedocs.io"
 [tool.hatch.build.targets.wheel]
 packages = ["amwrap"]
 
-[tool.hatch.build.hooks.custom]
+[tool.hatch.build.targets.wheel.hooks.custom]

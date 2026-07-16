@@ -1,6 +1,10 @@
 # Project specific folders
 old_scripts
 docs/build
+notes.txt
+
+# Compiled AM binaries (built at install time by hatch_build.py)
+amwrap/bin/
 
 # Compiled files
 *.py[cod]
@@ -8,10 +12,6 @@ docs/build
 *.o
 *.so
 __pycache__
-
-# Ignore .c files by default to avoid including generated code. If you want to
-# add a non-generated .c extension, use `git add -f filename.c`.
-*.c
 
 # Other generated files
 */version.py

@@ -43,30 +43,37 @@ class AmExecutable:
         if name not in ("am", "am-serial"):
             raise ValueError(f"Invalid name: {name}")
         self.name = name
-        try:
-            # Test if the executable name is callable from the user's environment.
-            result = subprocess.run([f"{name}", "-v"], capture_output=True)
-            self.exec_name = name
-            self.is_callable = True
-            self.version = self._parse_version(result)
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            # Fallback to the included executable.
-            exec_name = str(self.bin_dir / name)
-            result = subprocess.run([f"{exec_name}", "-v"], capture_output=True)
-            self.exec_name = exec_name
-            self.is_callable = True
-            self.version = self._parse_version(result)
+        # Try the PATH executable first, then the bundled binary. If neither is
+        # callable, mark not callable rather than raising at import time.
+        for exec_name in (name, str(self.bin_dir / name)):
+            am_version = self._probe_version(exec_name)
+            if am_version is not None:
+                self.exec_name = exec_name
+                self.is_callable = True
+                self.version = am_version
+                break
+        else:
+            self.exec_name = str(self.bin_dir / name)
+            self.is_callable = False
+            self.version = None
 
     @staticmethod
-    def _parse_version(result):
-        return version.parse(result.stdout.decode().split()[2])
+    def _probe_version(exec_name):
+        try:
+            result = subprocess.run([exec_name, "-v"], capture_output=True)
+        except (OSError, subprocess.SubprocessError):
+            return None
+        try:
+            return version.parse(result.stdout.decode().split()[2])
+        except (IndexError, UnicodeDecodeError, version.InvalidVersion):
+            return None
 
 # FIXME Use configuration system for "am"/"am-serial" executable names.
 AM_PARALLEL = AmExecutable("am")
 AM_SERIAL   = AmExecutable("am-serial")
 
 NO_AM_CALLABLE = not AM_PARALLEL.is_callable and not AM_SERIAL.is_callable
-BOTH_AM_CALLABLE = not NO_AM_CALLABLE
+BOTH_AM_CALLABLE = AM_PARALLEL.is_callable and AM_SERIAL.is_callable
 if NO_AM_CALLABLE:
     warnings.warn("No executable callable for AM.", UserWarning)
 if BOTH_AM_CALLABLE and (AM_PARALLEL.version != AM_SERIAL.version):
@@ -80,7 +87,7 @@ if BOTH_AM_CALLABLE and (AM_PARALLEL.version != AM_SERIAL.version):
 ENV = os.environ.copy()
 CACHE_DIR = Path("/dev/shm/")
 if CACHE_DIR.exists():
-    ENV["AM_CACHE_PATH"] = CACHE_DIR
+    ENV["AM_CACHE_PATH"] = str(CACHE_DIR)
 
 MOD_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
 MASS_DRY_AIR =     28.96546 * u.u  # amu
@@ -125,7 +132,7 @@ def precipitable_water(
             pressure.to("hPa").value * Quantity("hPa"),
             dewpoint,
     )
-    return pwv
+    return pwv.m_as("mm") * u.mm
 
 
 @u.quantity_input
@@ -410,21 +417,29 @@ class Model:
             Numerical tolerance for the self-broadening approximation described
             in S2.3.1 of the AM manual.
         """
-        assert pressure.shape == temperature.shape
-        assert pressure.shape[0] > 0
+        if pressure.shape != temperature.shape:
+            raise ValueError(
+                    f"Shape mismatch: {pressure.shape=} != {temperature.shape=}")
+        if pressure.shape[0] < 1:
+            raise ValueError("At least one layer is required.")
         self.pressure = pressure
         self.temperature = temperature
-        assert 0 * u.deg <= zenith_angle <= 90 * u.deg
+        if not (0 * u.deg <= zenith_angle <= 90 * u.deg):
+            raise ValueError(f"Zenith angle out of [0, 90] deg: {zenith_angle}")
         self.zenith_angle = zenith_angle
         # Output frequency range.
-        assert freq_max > freq_min
-        assert freq_step > 0 * u.Hz
-        assert (freq_max - freq_min) > freq_step
+        if not freq_max > freq_min:
+            raise ValueError(f"Require freq_max > freq_min: {freq_max=}, {freq_min=}")
+        if not freq_step > 0 * u.Hz:
+            raise ValueError(f"Require freq_step > 0: {freq_step=}")
+        if not (freq_max - freq_min) > freq_step:
+            raise ValueError(f"Require freq_max - freq_min > freq_step: {freq_step=}")
         self.freq_min  = freq_min
         self.freq_max  = freq_max
         self.freq_step = freq_step
         # Tropospheric water vapor scaling
-        assert troposphere_h2o_scaling > 0
+        if not troposphere_h2o_scaling > 0:
+            raise ValueError(f"Require troposphere_h2o_scaling > 0: {troposphere_h2o_scaling=}")
         self.troposphere_h2o_scaling = troposphere_h2o_scaling
         # Validate that the provided mixing ratios are available in AM. If `None`
         # is provided, then check that the specie is avialable in the standard
@@ -432,20 +447,37 @@ class Model:
         # check that the shapes match.
         if mixing_ratio is None:
             mixing_ratio = {}
+        # Build a fresh dict with copied arrays so neither the caller's input nor
+        # the shared CLIMATOLOGIES data can be mutated through this Model.
+        resolved_mixing_ratio = {}
         for specie, mr in mixing_ratio.items():
             if specie not in self.valid_species:
                 raise ValueError(f"Column type unavailable in AM: {specie}")
             if mr is None:
                 cl = CLIMATOLOGIES["us_standard"]
-                if specie not in CLIMATOLOGIES["us_standard"].mixing_ratio:
+                if specie not in cl.mixing_ratio:
                     raise ValueError(f"Default column type unavailable in climatology data: {specie}")
-                # Not okay to mutate a dictionary while looping?
-                mixing_ratio[specie] = np.interp(pressure, cl.pressure, cl.mixing_ratio[specie])
+                xp = cl.pressure[::-1].to(cl.pressure.unit).value
+                fp = cl.mixing_ratio[specie][::-1].to("").value
+                p  = pressure.to(cl.pressure.unit).value
+                resolved_mixing_ratio[specie] = np.interp(p, xp, fp) * u.dimensionless_unscaled
             else:
-                assert np.all(0 <= mr) and np.all(mr <= 1)
-                assert mr.shape == pressure.shape
-        self.mixing_ratio = mixing_ratio
+                if not (np.all(0 <= mr) and np.all(mr <= 1)):
+                    raise ValueError(f"Mixing ratio outside [0, 1] for {specie!r}")
+                if mr.shape != pressure.shape:
+                    raise ValueError(
+                            f"Shape mismatch for {specie!r}: {mr.shape} != {pressure.shape}")
+                resolved_mixing_ratio[specie] = mr.copy()
+        self.mixing_ratio = resolved_mixing_ratio
         # Liquid and ice water clouds.
+        for label, cloud in (("water_cloud", water_cloud), ("ice_cloud", ice_cloud)):
+            if cloud is None:
+                continue
+            if cloud.shape != pressure.shape:
+                raise ValueError(
+                        f"Shape mismatch for {label}: {cloud.shape} != {pressure.shape}")
+            if np.any(cloud < 0 * cloud.unit):
+                raise ValueError(f"Negative {label} value.")
         self.water_cloud = water_cloud
         self.ice_cloud = ice_cloud
         # AM output column validation.
@@ -454,9 +486,11 @@ class Model:
                 raise ValueError(f"Invalid output column: {out}")
         self.output_columns = output_columns
         # Execution acceleration parameters.
-        assert tolerance > 0
+        if not tolerance > 0:
+            raise ValueError(f"Require tolerance > 0: {tolerance=}")
         self.tolerance = tolerance
-        assert self_broadening_tolerance >= 0
+        if not self_broadening_tolerance >= 0:
+            raise ValueError(f"Require self_broadening_tolerance >= 0: {self_broadening_tolerance=}")
         self.self_broadening_tolerance = self_broadening_tolerance
 
     @classmethod
@@ -505,7 +539,7 @@ class Model:
 
     @property
     def increasing_pressure_order(self):
-        return self.pressure[1] > self.pressure[0]
+        return len(self.pressure) > 1 and self.pressure[1] > self.pressure[0]
 
     @property
     def config_text(self):
@@ -608,7 +642,11 @@ class Model:
     def _parse_output(self, result):
         # The return code from AM will be 1 if any warnings were raised in
         # the calculations. A common warning is that lines are unresolved
-        # at low pressures/high altitudes.
+        # at low pressures/high altitudes. Higher codes (or empty stdout)
+        # indicate a hard error, with the cause on stderr.
+        if not result.stdout or result.returncode > 1:
+            raise RuntimeError(f"AM failed (exit {result.returncode}): "
+                               f"{result.stderr.decode()}")
         warnings_returned = bool(result.returncode)
         # The array output is stored in the NumPy binary save-file ".npy"
         # format equivalent to what is generated by the `np.save` function.
