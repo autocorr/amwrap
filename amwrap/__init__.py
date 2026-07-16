@@ -515,7 +515,7 @@ class Model:
 
         Layers are labeled by pressure for:
         - thermosphere less than 0.01 mbar
-        - mesosphere   from 0.01 to 0.1 mbar
+        - mesosphere   from 0.01 to 1 mbar
         - stratosphere from 1 to 100 mbar
         - troposphere  greater than 100 mbar
         """
@@ -573,7 +573,9 @@ class Model:
                     f"Tbase {t} K",
                     "column dry_air vmr",
             ]
-            if layer_type == "mesosphere":
+            # The Voigt-Kielkopf lineshape is used for pressures less than 1
+            # mbar, covering both the mesosphere and thermosphere.
+            if p < 1:  # mbar
                 layer.append("lineshape Voigt-Kielkopf")
             layers.append(layer)
         for specie, mr in self.mixing_ratio.items():
