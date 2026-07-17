@@ -119,7 +119,7 @@ class TestModel:
         unit = u.kg / u.m**2
         water_cloud = np.zeros_like(f_cl.pressure).value * unit
         ice_cloud = water_cloud.copy()
-        water_cloud[2] += 0.1 * unit  #  ~2 km
+        water_cloud[2] += 0.1 * unit  # ~2 km
         ice_cloud[10]  += 0.1 * unit  # ~10 km
         m = Model(f_cl.pressure, f_cl.temperature, water_cloud=water_cloud, ice_cloud=ice_cloud)
         df = m.run()
@@ -467,4 +467,3 @@ class TestParseOutput:
                 returncode=0, stdout=b"", stderr=b"unexpected failure")
         with pytest.raises(RuntimeError, match="unexpected failure"):
             m._parse_output(result)
-

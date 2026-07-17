@@ -43,6 +43,7 @@ class AmExecutable:
         except (IndexError, UnicodeDecodeError, version.InvalidVersion):
             return None
 
+
 # The executable singletons are probed lazily on first attribute access (PEP
 # 562) rather than at import time, so importing the package does not spawn
 # subprocesses. Results are cached into module globals, after which
@@ -53,7 +54,7 @@ _LAZY_NAMES = ("AM_PARALLEL", "AM_SERIAL", "NO_AM_CALLABLE", "BOTH_AM_CALLABLE")
 def _probe():
     g = globals()
     if "AM_PARALLEL" in g:
-        return
+        return g["AM_PARALLEL"], g["AM_SERIAL"]
     # FIXME Use configuration system for "am"/"am-serial" executable names.
     g["AM_PARALLEL"] = am_parallel = AmExecutable("am")
     g["AM_SERIAL"]   = am_serial   = AmExecutable("am-serial")
@@ -69,6 +70,7 @@ def _probe():
                 f"{am_parallel.version} & {am_serial.version}",
                 UserWarning,
         )
+    return am_parallel, am_serial
 
 
 def __getattr__(name):
@@ -94,8 +96,8 @@ def get_executable(parallel=False):
     Select the AM executable for serial or OpenMP-parallel computation,
     raising `RuntimeError` if it is not callable.
     """
-    _probe()
-    am = AM_PARALLEL if parallel else AM_SERIAL
+    am_parallel, am_serial = _probe()
+    am = am_parallel if parallel else am_serial
     if not am.is_callable:
         raise RuntimeError(f"{am.name} is not callable: {am.exec_name}")
     return am

@@ -49,6 +49,7 @@ class Climatology:
         gas_trace = np.loadtxt(climatology_path / "gas_trace.dat")
         # Clip the pressure levels to a value if given.
         pressure = data[:, 1] * u.mbar
+
         def clip(arr):
             return interp_by_pressure(arr, pressure, pressure_base)
         # The slices will create views but multiplying by units will create copies.
@@ -125,6 +126,7 @@ class Climatology:
         at standard conditions for temperature and pressure (STP).
         """
         return self.column_density(specie).to("m-2").value / 2.69e20
+
 
 # Loading all six climatologies reads 18 data files, so the CLIMATOLOGIES
 # dict is built lazily on first attribute access (PEP 562) and cached into

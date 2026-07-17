@@ -1,0 +1,17 @@
+[flake8]
+max-line-length = 127
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    .eggs,
+    *.egg-info,
+    build,
+    dist,
+    src,
+    docs/build
+# Codes ignored as deliberate project style: vertical alignment of
+# assignments and subscripts (E221, E222, E231), compact `|None=None`
+# parameter annotations (E227, E252), hanging-indent continuation lines
+# (E125), and `###` comment banners (E266).
+extend-ignore = E125, E221, E222, E227, E231, E252, E266

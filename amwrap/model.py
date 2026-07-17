@@ -360,7 +360,7 @@ class Model:
         if not self.increasing_pressure_order:
             layers.reverse()
         layers.insert(0, header)
-        return "\n\n".join("\n".join(l) for l in layers)
+        return "\n\n".join("\n".join(block) for block in layers)
 
     def write_config(self, outname="output", ext="amc"):
         if ext in (None, ""):
@@ -412,5 +412,3 @@ class Model:
         am = driver.get_executable(parallel)
         result = driver.run_am(self.config_text, am, cache_dir=cache_dir)
         return self._parse_output(result)
-
-

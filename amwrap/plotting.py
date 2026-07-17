@@ -37,5 +37,3 @@ def set_minor_ticks(ax, x=True, y=True):
 
 def set_grid(ax):
     ax.grid(linestyle="dashed", color="0.3", linewidth=0.3)
-
-
