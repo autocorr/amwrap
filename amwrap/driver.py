@@ -43,20 +43,44 @@ class AmExecutable:
         except (IndexError, UnicodeDecodeError, version.InvalidVersion):
             return None
 
-# FIXME Use configuration system for "am"/"am-serial" executable names.
-AM_PARALLEL = AmExecutable("am")
-AM_SERIAL   = AmExecutable("am-serial")
+# The executable singletons are probed lazily on first attribute access (PEP
+# 562) rather than at import time, so importing the package does not spawn
+# subprocesses. Results are cached into module globals, after which
+# `__getattr__` is no longer consulted.
+_LAZY_NAMES = ("AM_PARALLEL", "AM_SERIAL", "NO_AM_CALLABLE", "BOTH_AM_CALLABLE")
 
-NO_AM_CALLABLE = not AM_PARALLEL.is_callable and not AM_SERIAL.is_callable
-BOTH_AM_CALLABLE = AM_PARALLEL.is_callable and AM_SERIAL.is_callable
-if NO_AM_CALLABLE:
-    warnings.warn("No executable callable for AM.", UserWarning)
-if BOTH_AM_CALLABLE and (AM_PARALLEL.version != AM_SERIAL.version):
-    warnings.warn(
-            "`am` and `am-serial` version mismatch: "
-            f"{AM_PARALLEL.version} & {AM_SERIAL.version}",
-            UserWarning,
-    )
+
+def _probe():
+    g = globals()
+    if "AM_PARALLEL" in g:
+        return
+    # FIXME Use configuration system for "am"/"am-serial" executable names.
+    g["AM_PARALLEL"] = am_parallel = AmExecutable("am")
+    g["AM_SERIAL"]   = am_serial   = AmExecutable("am-serial")
+    g["NO_AM_CALLABLE"] = no_am = (
+            not am_parallel.is_callable and not am_serial.is_callable)
+    g["BOTH_AM_CALLABLE"] = both_am = (
+            am_parallel.is_callable and am_serial.is_callable)
+    if no_am:
+        warnings.warn("No executable callable for AM.", UserWarning)
+    if both_am and (am_parallel.version != am_serial.version):
+        warnings.warn(
+                "`am` and `am-serial` version mismatch: "
+                f"{am_parallel.version} & {am_serial.version}",
+                UserWarning,
+        )
+
+
+def __getattr__(name):
+    if name in _LAZY_NAMES:
+        _probe()
+        return globals()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__():
+    return sorted(set(globals()) | set(_LAZY_NAMES))
+
 
 # Set environment variables for am
 ENV = os.environ.copy()
@@ -70,6 +94,7 @@ def get_executable(parallel=False):
     Select the AM executable for serial or OpenMP-parallel computation,
     raising `RuntimeError` if it is not callable.
     """
+    _probe()
     am = AM_PARALLEL if parallel else AM_SERIAL
     if not am.is_callable:
         raise RuntimeError(f"{am.name} is not callable: {am.exec_name}")

@@ -126,4 +126,17 @@ class Climatology:
         """
         return self.column_density(specie).to("m-2").value / 2.69e20
 
-CLIMATOLOGIES = {n: Climatology(n) for n in Climatology.names}
+# Loading all six climatologies reads 18 data files, so the CLIMATOLOGIES
+# dict is built lazily on first attribute access (PEP 562) and cached into
+# the module globals. The full dict is built at once so that lookup, length,
+# and iteration semantics match the previous eager definition exactly.
+def __getattr__(name):
+    if name == "CLIMATOLOGIES":
+        globals()["CLIMATOLOGIES"] = climatologies = {
+                n: Climatology(n) for n in Climatology.names}
+        return climatologies
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__():
+    return sorted(set(globals()) | {"CLIMATOLOGIES"})
