@@ -89,15 +89,17 @@ CACHE_DIR = Path("/dev/shm/")
 if CACHE_DIR.exists():
     ENV["AM_CACHE_PATH"] = str(CACHE_DIR)
 
-MOD_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
-MASS_DRY_AIR =     28.96546 * u.u  # amu
-MASS_DRY_AIR_MOL = MASS_DRY_AIR.value * 1e-3 * u.kg / u.mol
-MASS_WATER =       18.01528 * u.u
-RHO_WATER =         0.9998395 * u.g / u.cm**3
-STD_TEMPERATURE = 288.0 * u.K
-STD_PRESSURE =   1013.25 * u.hPa
-STD_LAPSE_RATE =    6.5 * u.K / u.km
-R_DRY_AIR = (c.R / MASS_DRY_AIR_MOL).to("J/(K kg)")
+from .constants import (
+    MOD_DIR,
+    MASS_DRY_AIR,
+    MASS_DRY_AIR_MOL,
+    MASS_WATER,
+    RHO_WATER,
+    STD_TEMPERATURE,
+    STD_PRESSURE,
+    STD_LAPSE_RATE,
+    R_DRY_AIR,
+)
 
 
 @u.quantity_input
