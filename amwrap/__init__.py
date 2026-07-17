@@ -21,73 +21,24 @@ Typical usage example:
 #   height using an exponential function.
 # - Convert all units from Astropy to Metpy.
 
-import os
-import warnings
-import subprocess
 from io import BytesIO
 from typing import Dict
-from pathlib import Path
-from packaging import version
 
 import numpy as np
 import pandas as pd
 
 from astropy import units as u
-from astropy import constants as c
 
-
-class AmExecutable:
-    bin_dir = (Path(__file__).parent / "bin").absolute()
-
-    def __init__(self, name):
-        if name not in ("am", "am-serial"):
-            raise ValueError(f"Invalid name: {name}")
-        self.name = name
-        # Try the PATH executable first, then the bundled binary. If neither is
-        # callable, mark not callable rather than raising at import time.
-        for exec_name in (name, str(self.bin_dir / name)):
-            am_version = self._probe_version(exec_name)
-            if am_version is not None:
-                self.exec_name = exec_name
-                self.is_callable = True
-                self.version = am_version
-                break
-        else:
-            self.exec_name = str(self.bin_dir / name)
-            self.is_callable = False
-            self.version = None
-
-    @staticmethod
-    def _probe_version(exec_name):
-        try:
-            result = subprocess.run([exec_name, "-v"], capture_output=True)
-        except (OSError, subprocess.SubprocessError):
-            return None
-        try:
-            return version.parse(result.stdout.decode().split()[2])
-        except (IndexError, UnicodeDecodeError, version.InvalidVersion):
-            return None
-
-# FIXME Use configuration system for "am"/"am-serial" executable names.
-AM_PARALLEL = AmExecutable("am")
-AM_SERIAL   = AmExecutable("am-serial")
-
-NO_AM_CALLABLE = not AM_PARALLEL.is_callable and not AM_SERIAL.is_callable
-BOTH_AM_CALLABLE = AM_PARALLEL.is_callable and AM_SERIAL.is_callable
-if NO_AM_CALLABLE:
-    warnings.warn("No executable callable for AM.", UserWarning)
-if BOTH_AM_CALLABLE and (AM_PARALLEL.version != AM_SERIAL.version):
-    warnings.warn(
-            "`am` and `am-serial` version mismatch: "
-            f"{AM_PARALLEL.version} & {AM_SERIAL.version}",
-            UserWarning,
-    )
-
-# Set environment variables for am
-ENV = os.environ.copy()
-CACHE_DIR = Path("/dev/shm/")
-if CACHE_DIR.exists():
-    ENV["AM_CACHE_PATH"] = str(CACHE_DIR)
+from . import driver
+from .driver import (
+    AmExecutable,
+    AM_PARALLEL,
+    AM_SERIAL,
+    NO_AM_CALLABLE,
+    BOTH_AM_CALLABLE,
+    ENV,
+    CACHE_DIR,
+)
 
 from .constants import (
     MOD_DIR,
@@ -504,20 +455,8 @@ class Model:
           `attrs` attribute. Metadata includes output from `STDERR`, whether
           warnings were raised, and the units for each output column.
         """
-        am = AM_PARALLEL if parallel else AM_SERIAL
-        if not am.is_callable:
-            raise RuntimeError(f"{am.name} is not callable: {am.exec_name}")
-        env = ENV if cache_dir is None else {**ENV, "AM_CACHE_PATH": str(cache_dir)}
-        # Call with subprocess and capture outputs to 'stdout' and 'stderr'.
-        try:
-            result = subprocess.run(
-                    [am.exec_name, "-"],
-                    env=env,
-                    input=self.config_text.encode(),
-                    capture_output=True,
-            )
-        except FileNotFoundError as e:
-            raise RuntimeError(f"Could not call `{am.exec_name}`: {e}")
+        am = driver.get_executable(parallel)
+        result = driver.run_am(self.config_text, am, cache_dir=cache_dir)
         return self._parse_output(result)
 
 
